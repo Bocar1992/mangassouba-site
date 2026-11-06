@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'https://mangassouba-site.onrender.com/api';
 let tokenAdmin = localStorage.getItem('adminToken');
 let adminData = JSON.parse(localStorage.getItem('adminData')) || null;
 let toutesLesCategories = [];
