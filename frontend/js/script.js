@@ -1,4 +1,4 @@
-const API_URL = 'https://mangassouba-site.onrender.com';
+const API_URL ='https://mangassouba-site.onrender.com/api'
 let monPanier = JSON.parse(localStorage.getItem('panierMangassouba')) || [];
 let promoAppliquee = null;
 let toutesLesCategories = [];
