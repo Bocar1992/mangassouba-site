@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Mangassouba et Fils</title>
+    <link rel="stylesheet" href="css/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div id="login-screen">
+        <div class="login-box">
+            <img src="images/logo.png" alt="Logo">
+            <h2>Espace Administrateur</h2>
+            <div id="login-error">Email ou mot de passe incorrect.</div>
+            <form onsubmit="seConnecter(event)">
+                <input type="email" id="admin-email" placeholder="Email" required value="admin@mangassouba.mr">
+                <input type="password" id="admin-password" placeholder="Mot de passe" required>
+                <button type="submit">Se connecter</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="dashboard-screen">
+        <div class="layout">
+            <aside class="sidebar">
+                <div class="sidebar-logo">
+                    <img src="images/logo.png" alt="Logo">
+                    <h2>Admin</h2>
+                </div>
+                <ul class="sidebar-menu">
+                    <li class="active" onclick="changerOnglet('dashboard', this)">📊 Tableau de bord</li>
+                    <li onclick="changerOnglet('comptabilite', this)">💰 Comptabilité</li>
+                    <li onclick="changerOnglet('banners', this)">📢 Annonces</li>
+                    <li onclick="changerOnglet('categories', this)">📁 Catégories</li>
+                    <li onclick="changerOnglet('produits', this)">📦 Produits</li>
+                    <li onclick="changerOnglet('commandes', this)">🛒 Commandes</li>
+                    <li onclick="changerOnglet('clients', this)">👥 Clients</li>
+                    <li onclick="changerOnglet('admins', this)">🛡️ Admins</li>
+                    <li onclick="ouvrirMonCompte()">⚙️ Mon Compte</li>
+                </ul>
+                <div class="sidebar-footer">
+                    <button class="btn-logout" onclick="seDeconnecter()">Déconnexion</button>
+                </div>
+            </aside>
+
+            <main class="main-content">
+                <!-- DASHBOARD -->
+                <section id="section-dashboard" class="page-section active">
+                    <h1 class="page-title">Vue d'ensemble</h1>
+                    <div class="stats-grid">
+                        <div class="stat-card"><h3>Chiffre d'Affaires</h3><p id="stat-ca">0 MRU</p></div>
+                        <div class="stat-card or"><h3>Commandes en attente</h3><p id="stat-attente">0</p></div>
+                        <div class="stat-card rouge"><h3>Alertes Stock (< 5)</h3><p id="stat-stock">0</p></div>
+                        <div class="stat-card"><h3>Total Produits</h3><p id="stat-produits">0</p></div>
+                    </div>
+                </section>
+
+                <!-- ANNONCES -->
+                <section id="section-banners" class="page-section">
+                    <h1 class="page-title">📢 Annonces & Carrousel</h1>
+                    <div class="action-bar">
+                        <p>Gérez les bannières qui défilent sur la page d'accueil.</p>
+                        <button class="btn-add" onclick="ouvrirModaleBanner()">➕ Nouvelle Annonce</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>Image</th><th>Titre</th><th>Lien</th><th>Statut</th><th>Actions</th></tr></thead>
+                        <tbody id="liste-banners-admin"></tbody>
+                    </table>
+                </section>
+
+                <!-- COMPTABILITÉ -->
+                <section id="section-comptabilite" class="page-section">
+                    <h1 class="page-title">💰 Comptabilité & Finances</h1>
+                    <div class="stats-grid" style="margin-bottom: 30px;">
+                        <div class="stat-card" style="border-left-color: var(--vert);"><h3>Chiffre d'Affaires</h3><p id="fin-ca">0 MRU</p></div>
+                        <div class="stat-card" style="border-left-color: red;"><h3>Total Dépenses</h3><p id="fin-depenses">0 MRU</p></div>
+                        <div class="stat-card" style="border-left-color: var(--or);"><h3>Valeur du Stock</h3><p id="fin-stock">0 MRU</p></div>
+                        <div class="stat-card" style="border-left-color: #004085;"><h3>Bénéfice Estimé</h3><p id="fin-benefice">0 MRU</p></div>
+                    </div>
+                    <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 300px;">
+                            <div class="action-bar">
+                                <h3>Gestion des Dépenses</h3>
+                                <button class="btn-add" onclick="ouvrirModaleDepense()">➕ Ajouter Dépense</button>
+                            </div>
+                            <table>
+                                <thead><tr><th>Date</th><th>Description</th><th>Montant</th><th>Action</th></tr></thead>
+                                <tbody id="liste-depenses-admin"></tbody>
+                            </table>
+                        </div>
+                        <div style="flex: 1; min-width: 300px;">
+                            <div class="action-bar">
+                                <h3>Factures Proforma</h3>
+                                <button class="btn-add" onclick="ouvrirModaleProforma()">➕ Nouveau Devis</button>
+                            </div>
+                            <table>
+                                <thead><tr><th>N°</th><th>Client</th><th>Total</th><th>Action</th></tr></thead>
+                                <tbody id="liste-proformas-admin"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CATÉGORIES -->
+                <section id="section-categories" class="page-section">
+                    <h1 class="page-title">Gestion des Catégories</h1>
+                    <div class="action-bar">
+                        <p>Le site traduira automatiquement vos catégories.</p>
+                        <button class="btn-add" onclick="ouvrirModaleCategorie()">➕ Nouvelle Catégorie</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>ID</th><th>Nom (FR)</th><th>Traduction (EN / AR)</th><th>Parent</th><th>Actions</th></tr></thead>
+                        <tbody id="liste-categories-admin"></tbody>
+                    </table>
+                </section>
+
+                <!-- PRODUITS -->
+                <section id="section-produits" class="page-section">
+                    <h1 class="page-title">Gestion des Produits</h1>
+                    <div class="action-bar">
+                        <p>Ajoutez et gérez vos articles.</p>
+                        <button class="btn-add" onclick="ouvrirModaleProduit()">➕ Nouveau Produit</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>Image</th><th>Nom (FR)</th><th>Prix Détail</th><th>Prix Gros</th><th>Stock</th><th>Actions</th></tr></thead>
+                        <tbody id="liste-produits-admin"></tbody>
+                    </table>
+                </section>
+
+                <!-- COMMANDES (MISE A JOUR) -->
+                <section id="section-commandes" class="page-section">
+                    <h1 class="page-title">Gestion des Commandes</h1>
+                    <div class="action-bar">
+                        <p>Gérez les commandes en ligne ou ajoutez-en manuellement.</p>
+                        <button class="btn-add" onclick="ouvrirModaleCommande()">➕ Nouvelle Commande</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>N°</th><th>Client</th><th>Total</th><th>Date</th><th>Statut</th><th>Facture</th><th>Actions</th></tr></thead>
+                        <tbody id="liste-commandes-admin"></tbody>
+                    </table>
+                </section>
+
+                <!-- CLIENTS -->
+                <section id="section-clients" class="page-section">
+                    <h1 class="page-title">Gestion des Clients</h1>
+                    <table>
+                        <thead><tr><th>ID</th><th>Nom</th><th>Téléphone</th><th>Points</th><th>Inscription</th><th>Actions</th></tr></thead>
+                        <tbody id="liste-clients-admin"></tbody>
+                    </table>
+                </section>
+
+                <!-- ADMINS -->
+                <section id="section-admins" class="page-section">
+                    <h1 class="page-title">Gestion des Administrateurs</h1>
+                    <div class="action-bar">
+                        <p>Gérez les accès à ce tableau de bord.</p>
+                        <button class="btn-add" onclick="ouvrirModaleAdmin()">➕ Nouvel Admin</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>ID</th><th>Nom</th><th>Email</th><th>Rôle</th><th>Actions</th></tr></thead>
+                        <tbody id="liste-admins-admin"></tbody>
+                    </table>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- ================= LES MODALES ================= -->
+
+    <!-- MODALE COMMANDE -->
+    <div id="modal-commande" class="modal-admin">
+        <div class="modal-content-admin" style="max-width: 800px;">
+            <h3 id="modal-cmd-titre">Nouvelle Commande</h3>
+            <input type="hidden" id="cmd-id">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                <div><label>Client *</label><input type="text" id="cmd-client" required></div>
+                <div><label>Téléphone</label><input type="tel" id="cmd-phone"></div>
+                <div><label>Adresse</label><input type="text" id="cmd-address"></div>
+                <div><label>Paiement *</label>
+                    <select id="cmd-payment" required style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px;">
+                        <option value="Espèces">Espèces</option>
+                        <option value="Mobile Money">Mobile Money</option>
+                    </select>
+                </div>
+                <div><label>Statut</label>
+                    <select id="cmd-status" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px;">
+                        <option value="en attente">En attente</option>
+                        <option value="confirmée">Confirmée</option>
+                        <option value="livrée">Livrée</option>
+                    </select>
+                </div>
+            </div>
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4>Articles</h4>
+                <button class="btn-small" onclick="ajouterLigneCommande()" style="background: var(--vert);">➕ Ajouter un article</button>
+            </div>
+            <div id="commande-lignes" style="max-height: 200px; overflow-y: auto; background: #fafafa; padding: 10px; border-radius: 8px;"></div>
+            <div style="text-align: right; margin-top: 15px; font-size: 20px; font-weight: bold;">Total : <span id="cmd-total">0</span> MRU</div>
+            <div class="modal-buttons" style="margin-top: 20px;">
+                <button class="btn-cancel" onclick="fermerModaleCommande()">Annuler</button>
+                <button class="btn-save" onclick="sauvegarderCommande()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE BANNER -->
+    <div id="modal-banner" class="modal-admin">
+        <div class="modal-content-admin">
+            <h3>Nouvelle Annonce / Bannière</h3>
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Titre *</label>
+            <input type="text" id="banner-title" required>
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Description</label>
+            <textarea id="banner-desc" rows="2" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid #ddd; border-radius:8px;"></textarea>
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Lien (Optionnel, ex: #produits)</label>
+            <input type="text" id="banner-link">
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Image de fond *</label>
+            <input type="file" id="banner-image" accept="image/*" required>
+            <div class="modal-buttons" style="margin-top: 20px;">
+                <button class="btn-cancel" onclick="fermerModaleBanner()">Annuler</button>
+                <button class="btn-save" onclick="sauvegarderBanner()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE PRODUIT -->
+    <div id="modal-produit" class="modal-admin">
+        <div class="modal-content-admin" style="max-width: 750px;">
+            <h3 id="modal-prod-titre">Nouveau Produit</h3>
+            <input type="hidden" id="prod-id">
+            <input type="hidden" id="prod-existing-media">
+            <input type="hidden" id="prod-existing-video">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div><label>Nom (FR) *</label><input type="text" id="prod-nom" required></div>
+                <div><label>Catégorie *</label><select id="prod-category" required style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px;"></select></div>
+                <div style="background: #f0f4f1; padding: 10px; border-radius: 8px;"><label style="color:var(--vert);">Prix Détail (MRU) *</label><input type="number" id="prod-prix" required></div>
+                <div style="background: #f0f4f1; padding: 10px; border-radius: 8px;"><label style="color:#004085;">Prix Gros (MRU)</label><input type="number" id="prod-prix-gros"></div>
+                <div><label>Seuil de Gros (Qté)</label><input type="number" id="prod-seuil-gros" value="10"></div>
+                <div><label>Stock *</label><input type="number" id="prod-stock" required></div>
+                <div style="grid-column: span 2;"><label>Prix d'Achat (Interne)</label><input type="number" id="prod-prix-achat"></div>
+            </div>
+            <label style="display:block; margin:15px 0 5px; font-weight:600;">Description (FR)</label>
+            <textarea id="prod-desc" rows="3" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px;"></textarea>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                <div><label>Image</label><input type="file" id="prod-image" accept="image/*" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;"></div>
+                <div><label>Vidéo (Démo)</label><input type="file" id="prod-video" accept="video/*" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;"></div>
+            </div>
+            <div class="modal-buttons" style="margin-top: 20px;">
+                <button class="btn-cancel" onclick="fermerModaleProduit()">Annuler</button>
+                <button class="btn-save" onclick="sauvegarderProduit()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DÉPENSE -->
+    <div id="modal-depense" class="modal-admin">
+        <div class="modal-content-admin">
+            <h3>Nouvelle Dépense</h3>
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Description *</label><input type="text" id="dep-desc" required>
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Montant (MRU) *</label><input type="number" id="dep-montant" required>
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Catégorie *</label>
+            <select id="dep-cat" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid #ddd; border-radius:8px;">
+                <option value="Loyer">Loyer</option><option value="Électricité/Eau">Électricité / Eau</option>
+                <option value="Salaires">Salaires</option><option value="Transport">Transport</option>
+                <option value="Achat de stock">Achat de stock</option><option value="Autre">Autre</option>
+            </select>
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Date *</label><input type="date" id="dep-date" required>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="fermerModaleDepense()">Annuler</button>
+                <button class="btn-save" onclick="sauvegarderDepense()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE PROFORMA -->
+    <div id="modal-proforma" class="modal-admin">
+        <div class="modal-content-admin" style="max-width: 800px;">
+            <h3>Créer une Facture Proforma</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div><label>Nom du Client *</label><input type="text" id="prof-client" required></div>
+                <div><label>Téléphone</label><input type="tel" id="prof-phone"></div>
+                <div><label>Adresse</label><input type="text" id="prof-address"></div>
+                <div><label>Valable jusqu'au</label><input type="date" id="prof-validity"></div>
+            </div>
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4>Articles</h4>
+                <button class="btn-small" onclick="ajouterLigneProforma()" style="background: var(--vert);">➕ Ajouter un article</button>
+            </div>
+            <div id="proforma-lignes" style="max-height: 200px; overflow-y: auto; background: #fafafa; padding: 10px; border-radius: 8px;"></div>
+            <div style="text-align: right; margin-top: 15px; font-size: 20px; font-weight: bold;">Total : <span id="prof-total">0</span> MRU</div>
+            <div class="modal-buttons" style="margin-top: 20px;">
+                <button class="btn-cancel" onclick="fermerModaleProforma()">Annuler</button>
+                <button class="btn-save" onclick="genererProforma()">Télécharger le PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE CATÉGORIE -->
+    <div id="modal-categorie" class="modal-admin">
+        <div class="modal-content-admin">
+            <h3 id="modal-cat-titre">Nouvelle Catégorie</h3>
+            <input type="hidden" id="cat-id">
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Nom en Français *</label><input type="text" id="cat-nom" required>
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Catégorie parente</label>
+            <select id="cat-parent" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid #ddd; border-radius:8px;">
+                <option value="">-- Aucune (Principale) --</option>
+            </select>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="fermerModaleCategorie()">Annuler</button>
+                <button class="btn-save" onclick="sauvegarderCategorie()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE ADMIN -->
+    <div id="modal-admin" class="modal-admin">
+        <div class="modal-content-admin">
+            <h3 id="modal-admin-titre">Nouvel Administrateur</h3>
+            <input type="hidden" id="admin-id">
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Nom complet *</label><input type="text" id="admin-nom" required>
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Email *</label><input type="email" id="admin-new-email" required>
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Mot de passe (vide = inchangé)</label><input type="password" id="admin-new-password">
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Rôle</label>
+            <select id="admin-role" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid #ddd; border-radius:8px;">
+                <option value="admin">Admin</option><option value="superadmin">Super Admin</option>
+            </select>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="fermerModaleAdmin()">Annuler</button>
+                <button class="btn-save" onclick="sauvegarderAdmin()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE MON COMPTE -->
+    <div id="modal-mon-compte" class="modal-admin">
+        <div class="modal-content-admin">
+            <h3>⚙️ Mon Compte</h3>
+            <p style="font-size: 13px; color: #555; margin-bottom: 15px;">Connecté en tant que : <strong id="compte-nom"></strong></p>
+            <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Ancien mot de passe *</label><input type="password" id="compte-old-password">
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Nouveau mot de passe *</label><input type="password" id="compte-new-password">
+            <div class="modal-buttons" style="margin-top: 20px;">
+                <button class="btn-cancel" onclick="fermerMonCompte()">Annuler</button>
+                <button class="btn-save" onclick="changerMonMotDePasse()">Mettre à jour</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/admin.js"></script>
+</body>
+</html>
