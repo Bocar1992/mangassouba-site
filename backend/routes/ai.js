@@ -3,47 +3,48 @@ const router = express.Router();
 const db = require('../db');
 require('dotenv').config();
 
-// Fonction pour appeler l'API Gemini
 async function appelerGemini(prompt) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-    const reponse = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }]
-        })
-    });
-    const data = await reponse.json();
-    if (data.candidates && data.candidates.length > 0) {
-        return data.candidates[0].content.parts[0].text;
+    try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+        const reponse = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        const data = await reponse.json();
+        
+        if (data.candidates && data.candidates.length > 0) {
+            return data.candidates[0].content.parts[0].text;
+        } else {
+            console.error("Erreur Gemini (pas de réponse) :", data);
+            throw new Error("L'API Gemini a refusé la requête.");
+        }
+    } catch (err) {
+        console.error("Erreur de connexion à Gemini :", err.message);
+        throw err;
     }
-    return "Désolé, je n'ai pas pu générer de réponse.";
 }
 
 // 1. CHAT POUR LES CLIENTS
 router.post('/chat', async (req, res) => {
     const { message } = req.body;
     try {
-        // On récupère les produits pour donner du contexte à l'IA
         const produitsRes = await db.query('SELECT nom, prix, stock FROM products LIMIT 50');
         const listeProduits = produitsRes.rows.map(p => `${p.nom} (${p.prix} MRU, stock: ${p.stock})`).join(', ');
 
         const prompt = `
-        Tu es l'assistant virtuel de la boutique "Mangassouba et Fils" située à Sélibaby, Mauritanie (marché centre-ville).
-        Numéros de téléphone : 00222 46 43 22 53 / 00222 42 43 22 53.
+        Tu es l'assistant virtuel de la boutique "Mangassouba et Fils" située à Sélibaby, Mauritanie.
+        Numéros : 00222 46 43 22 53 / 00222 42 43 22 53.
         Horaires : Tous les jours (sauf vendredi) : 08h00 - 18h00.
-        Ton rôle est de répondre poliment aux clients, de les aider à trouver des produits et de les conseiller.
-        Voici la liste des produits actuellement en stock : ${listeProduits || 'Aucun produit pour le moment'}.
-        
+        Produits en stock : ${listeProduits || 'Aucun pour le moment'}.
         Question du client : "${message}"
-        Réponds de manière brève, chaleureuse et utile.
+        Réponds brièvement et poliment.
         `;
-
         const reponseIA = await appelerGemini(prompt);
         res.json({ response: reponseIA });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Erreur de l\'IA.' });
+        // On renvoie une erreur propre au client
+        res.status(500).json({ response: "Désolé, je ne peux pas répondre pour le moment. Veuillez nous contacter au 00222 46 43 22 53." });
     }
 });
 
@@ -53,26 +54,30 @@ router.post('/admin/generate-product', async (req, res) => {
     try {
         const prompt = `
         Tu es un assistant pour le gérant de la boutique.
-        Voici un texte brut fourni par le gérant : "${texte}"
-        Tu dois extraire les informations et générer un objet JSON STRICTEMENT valide avec les clés suivantes :
+        Texte fourni : "${texte}"
+        Génère un objet JSON STRICTEMENT valide avec les clés suivantes :
         - "nom" (string)
-        - "prix" (number, en MRU)
-        - "description" (string, courte)
+        - "prix" (number)
+        - "description" (string)
         - "stock" (number)
-        - "prix_achat" (number, estime-le si non fourni, sinon 0)
-        
+        - "prix_achat" (number, estime-le si absent, sinon 0)
         Ne renvoie QUE le JSON, sans texte avant ou après, sans balises markdown.
         `;
-
         let reponseIA = await appelerGemini(prompt);
-        // Nettoyer la réponse au cas où l'IA ajoute des balises markdown
+        
+        // Nettoyage de sécurité
         reponseIA = reponseIA.replace(/```json/g, '').replace(/```/g, '').trim();
         
-        const produitJSON = JSON.parse(reponseIA);
-        res.json(produitJSON);
+        try {
+            const produitJSON = JSON.parse(reponseIA);
+            res.json(produitJSON);
+        } catch (parseError) {
+            console.error("L'IA n'a pas renvoyé du JSON valide. Texte reçu :", reponseIA);
+            res.status(500).json({ message: "L'IA a répondu, mais pas dans le bon format. Réessayez." });
+        }
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Erreur lors de la génération.' });
+        console.error("Erreur API Admin :", err.message);
+        res.status(500).json({ message: "Erreur de communication avec l'IA. Vérifiez la clé API." });
     }
 });
 
