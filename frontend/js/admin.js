@@ -41,7 +41,7 @@ async function seConnecter(event) {
                 errorDiv.innerText = data.message || "Erreur de connexion.";
             }
         }
-    } catch (err) { alert("Erreur serveur. Le serveur Render met parfois 50s à se réveiller. Patience !"); }
+    } catch (err) { alert("Erreur serveur. Le serveur Render met parfois 50s à se réveiller."); }
 }
 
 function seDeconnecter() { localStorage.removeItem('adminToken'); localStorage.removeItem('adminData'); window.location.reload(); }
@@ -79,7 +79,6 @@ async function chargerStats() {
     } catch (err) { console.error(err); }
 }
 
-// ==================== MON COMPTE ====================
 function ouvrirMonCompte() {
     if (!adminData) { alert("Veuillez vous reconnecter."); return; }
     document.getElementById('modal-mon-compte').classList.add('show');
@@ -87,6 +86,7 @@ function ouvrirMonCompte() {
     document.getElementById('compte-old-password').value = ''; document.getElementById('compte-new-password').value = '';
 }
 function fermerMonCompte() { document.getElementById('modal-mon-compte').classList.remove('show'); }
+
 async function changerMonMotDePasse() {
     const oldPassword = document.getElementById('compte-old-password').value; const newPassword = document.getElementById('compte-new-password').value;
     if (!oldPassword || !newPassword) return alert("Veuillez remplir les deux champs.");
@@ -98,7 +98,6 @@ async function changerMonMotDePasse() {
     } catch (err) { alert("Erreur."); } finally { btn.innerText = "Mettre à jour"; btn.disabled = false; }
 }
 
-// ==================== COMMANDES ====================
 async function chargerCommandesAdmin() {
     try {
         const reponse = await fetch(`${API_URL}/orders`, { headers: { 'Authorization': `Bearer ${tokenAdmin}` } });
@@ -242,7 +241,6 @@ async function supprimerCommande(id) {
     } catch (err) { alert("Erreur serveur."); }
 }
 
-// ==================== GESTION DES ANNONCES ====================
 async function chargerBannersAdmin() {
     try {
         const reponse = await fetch(`${API_URL}/banners/admin`, { headers: { 'Authorization': `Bearer ${tokenAdmin}` } });
@@ -275,7 +273,6 @@ async function sauvegarderBanner() {
 }
 async function supprimerBanner(id) { if(!confirm("Supprimer ?")) return; try { const rep = await fetch(`${API_URL}/banners/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if(rep.ok) chargerBannersAdmin(); } catch(e) { alert("Erreur."); } }
 
-// ==================== GESTION DES PRODUITS ====================
 async function chargerProduitsAdmin() {
     try {
         const reponse = await fetch(`${API_URL}/products`); tousLesProduits = await reponse.json();
@@ -338,7 +335,6 @@ async function sauvegarderProduit() {
 }
 async function supprimerProduit(id) { if (!confirm("Supprimer ce produit ?")) return; try { const reponse = await fetch(`${API_URL}/products/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if (reponse.ok) { chargerProduitsAdmin(); chargerStats(); } } catch (err) { alert("Erreur serveur."); } }
 
-// ==================== COMPTABILITÉ ====================
 async function chargerFinances() {
     try {
         const reponse = await fetch(`${API_URL}/stats`, { headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); const data = await reponse.json();
@@ -421,7 +417,6 @@ async function genererProforma() {
 }
 async function supprimerProforma(id) { if (!confirm("Supprimer ?")) return; try { const reponse = await fetch(`${API_URL}/accounting/proformas/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if (reponse.ok) chargerProformasAdmin(); } catch (err) { alert("Erreur."); } }
 
-// ==================== CATÉGORIES, CLIENTS & ADMINS ====================
 async function chargerCategoriesAdmin() {
     try {
         const reponse = await fetch(`${API_URL}/categories`); toutesLesCategories = await reponse.json();
@@ -489,5 +484,4 @@ async function sauvegarderAdmin() {
     if (!nom || !email) return alert("Nom et email obligatoires.");
     const url = id ? `${API_URL}/admins/${id}` : `${API_URL}/admins`; const method = id ? 'PUT' : 'POST';
     try { const reponse = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenAdmin}` }, body: JSON.stringify({ nom, email, password, role }) }); if (reponse.ok) { fermerModaleAdmin(); chargerAdminsAdmin(); } else { const d = await reponse.json(); alert(d.message); } } catch (err) { alert("Erreur serveur."); } }
-}
 async function supprimerAdmin(id) { if (!confirm("Supprimer ?")) return; try { const reponse = await fetch(`${API_URL}/admins/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if (reponse.ok) chargerAdminsAdmin(); } catch (err) { alert("Erreur."); } }
