@@ -9,7 +9,8 @@ const path = require('path');
 router.post('/', async (req, res) => {
   const { clientName, phone, address, items, payment, delivery_zone, delivery_fee, promo_code, discount_amount, total } = req.body;
 
-  const client = await db.connect();
+  // CORRECTION ICI : db.pool.connect()
+  const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
 
@@ -58,7 +59,8 @@ router.get('/', verifyAdmin, async (req, res) => {
 router.post('/admin', verifyAdmin, async (req, res) => {
   const { clientName, phone, address, items, payment, status, total } = req.body;
 
-  const client = await db.connect();
+  // CORRECTION ICI : db.pool.connect()
+  const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
 
@@ -97,7 +99,8 @@ router.put('/admin/:id', verifyAdmin, async (req, res) => {
   const { id } = req.params;
   const { clientName, phone, address, items, payment, status, total } = req.body;
 
-  const client = await db.connect();
+  // CORRECTION ICI : db.pool.connect()
+  const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
 
@@ -135,7 +138,8 @@ router.put('/admin/:id', verifyAdmin, async (req, res) => {
 // 6. SUPPRIMER UNE COMMANDE (Admin)
 router.delete('/:id', verifyAdmin, async (req, res) => {
   const { id } = req.params;
-  const client = await db.connect();
+  // CORRECTION ICI : db.pool.connect()
+  const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
 
