@@ -1,4 +1,4 @@
-const API_URL = 'https://mangassouba-site.onrender.com/api'; // URL DE PRODUCTION
+const API_URL = 'https://mangassouba-site.onrender.com/api';
 let monPanier = JSON.parse(localStorage.getItem('panierMangassouba')) || [];
 let promoAppliquee = null;
 let toutesLesCategories = [];
@@ -75,25 +75,15 @@ async function chargerCarrousel() {
         const conteneur = document.getElementById('carrousel-container');
         conteneur.innerHTML = '';
 
-        if (banners.length === 0) {
-            conteneur.style.display = 'none';
-            return;
-        }
+        if (banners.length === 0) { conteneur.style.display = 'none'; return; }
 
         banners.forEach(b => {
             const div = document.createElement('div');
             div.className = 'carrousel-item';
-            div.onclick = () => {
-                if (b.link_url) window.location.href = b.link_url;
-                else window.location.href = '#produits';
-            };
+            div.onclick = () => { if (b.link_url) window.location.href = b.link_url; else window.location.href = '#produits'; };
             div.innerHTML = `
                 <img src="${b.image_url}" alt="${b.title}">
-                <div class="carrousel-content">
-                    <h3>${b.title}</h3>
-                    <p>${b.description || ''}</p>
-                </div>
-            `;
+                <div class="carrousel-content"><h3>${b.title}</h3><p>${b.description || ''}</p></div>`;
             conteneur.appendChild(div);
         });
 
@@ -105,7 +95,6 @@ async function chargerCarrousel() {
                 conteneur.scrollTo({ left: index * itemWidth, behavior: 'smooth' });
             }
         }, 4000);
-
     } catch (e) { console.error("Erreur carrousel:", e); }
 }
 
@@ -134,7 +123,6 @@ async function chargerCategories() {
         tousLesProduits = await repProd.json();
         tousLesProduits.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         afficherProduits(tousLesProduits.slice(0, 12));
-        
     } catch (erreur) { console.error("Erreur catégories:", erreur); }
 }
 
@@ -228,12 +216,11 @@ function afficherProduits(produits) {
         conteneur.appendChild(carte);
     });
 }
-
+// ... (Les autres fonctions de panier et client n'ont pas changé)
 function ouvrirClient() { if (tokenClient) ouvrirProfil(); else document.getElementById('client-modal').classList.add('show'); }
 function fermerClient() { document.getElementById('client-modal').classList.remove('show'); }
 function ouvrirProfil() { document.getElementById('profil-modal').classList.add('show'); chargerProfilClient(); }
 function fermerProfil() { document.getElementById('profil-modal').classList.remove('show'); }
-
 function changerOngletClient(onglet) {
     if(onglet === 'login') {
         document.getElementById('form-client-login').style.display = 'block'; document.getElementById('form-client-register').style.display = 'none';
@@ -245,7 +232,6 @@ function changerOngletClient(onglet) {
         document.getElementById('tab-login-btn').style.background = '#eee'; document.getElementById('tab-login-btn').style.color = '#333';
     }
 }
-
 async function connecterClient(event) {
     event.preventDefault();
     const phone = document.getElementById('login-phone').value; const password = document.getElementById('login-password').value;
@@ -259,7 +245,6 @@ async function connecterClient(event) {
         } else alert(data.message);
     } catch (e) { alert("Erreur serveur."); }
 }
-
 async function inscrireClient(event) {
     event.preventDefault();
     const name = document.getElementById('register-name').value; const phone = document.getElementById('register-phone').value; const password = document.getElementById('register-password').value;
@@ -273,93 +258,68 @@ async function inscrireClient(event) {
         } else alert(data.message);
     } catch (e) { alert("Erreur serveur."); }
 }
-
 function verifierSessionClient() {
     if (tokenClient && clientData) {
         document.getElementById('client-nom-affiche').innerText = clientData.name.split(' ')[0];
         if(document.getElementById('clientName')) document.getElementById('clientName').value = clientData.name;
         if(document.getElementById('phone')) document.getElementById('phone').value = clientData.phone;
-    } else {
-        document.getElementById('client-nom-affiche').innerText = traductions[langueActuelle].nav_login;
-    }
+    } else { document.getElementById('client-nom-affiche').innerText = traductions[langueActuelle].nav_login; }
 }
-
 function deconnecterClient() {
     localStorage.removeItem('clientToken'); localStorage.removeItem('clientData');
     tokenClient = null; clientData = null; fermerProfil(); verifierSessionClient(); window.location.reload();
 }
-
 async function chargerProfilClient() {
     try {
         const rep = await fetch(`${API_URL}/client-auth/profile`, { headers: { 'Authorization': `Bearer ${tokenClient}` } });
         if(!rep.ok) return deconnecterClient();
         const data = await rep.json();
-        
         document.getElementById('profil-nom').innerText = data.customer.name;
         document.getElementById('profil-phone').innerText = data.customer.phone;
         document.getElementById('profil-points').innerText = data.customer.points;
-
         const conteneur = document.getElementById('profil-commandes'); conteneur.innerHTML = '';
         if(data.orders.length === 0) { conteneur.innerHTML = '<p style="font-size:13px; color:#777;">Aucune commande pour le moment.</p>'; return; }
-
         data.orders.forEach(o => {
             const date = new Date(o.created_at).toLocaleDateString('fr-FR');
             let statusColor = o.status === 'livrée' ? 'var(--vert)' : (o.status === 'confirmée' ? '#004085' : '#856404');
             let statusBg = o.status === 'livrée' ? '#d4edda' : (o.status === 'confirmée' ? '#cce5ff' : '#fff3cd');
             let statusTxt = traductions[langueActuelle]['status_'+o.status.replace('é','e')] || o.status;
-
             const div = document.createElement('div'); div.className = 'commande-profil-item';
-            div.innerHTML = `
-                <div><h4>Commande #${o.id}</h4><p>${date} - ${new Intl.NumberFormat('fr-FR').format(o.total)} MRU</p></div>
-                <span class="status-badge" style="color:${statusColor}; background:${statusBg};">${statusTxt}</span>`;
+            div.innerHTML = `<div><h4>Commande #${o.id}</h4><p>${date} - ${new Intl.NumberFormat('fr-FR').format(o.total)} MRU</p></div><span class="status-badge" style="color:${statusColor}; background:${statusBg};">${statusTxt}</span>`;
             conteneur.appendChild(div);
         });
     } catch (e) { console.error(e); }
 }
-
 async function ouvrirLightbox(id) {
     produitLightbox = tousLesProduits.find(p => p.id === id);
     if(!produitLightbox) return;
-    
     document.getElementById('lb-image').src = produitLightbox.media || 'https://via.placeholder.com/400x400';
     document.getElementById('lb-image').style.display = 'block';
-    
     const videoEl = document.getElementById('lb-video'); const btnPlay = document.getElementById('btn-play-video');
     if (produitLightbox.video) { videoEl.src = produitLightbox.video; btnPlay.style.display = 'block'; videoEl.style.display = 'none'; } 
     else { btnPlay.style.display = 'none'; videoEl.style.display = 'none'; videoEl.src = ''; }
-
     document.getElementById('lb-nom').innerText = getNomProduit(produitLightbox);
     document.getElementById('lb-desc').innerText = getDescProduit(produitLightbox) || 'Aucune description.';
     document.getElementById('lb-prix').innerText = new Intl.NumberFormat('fr-FR').format(produitLightbox.prix) + ' MRU';
-    
     let nomCategorie = produitLightbox.categorie_nom || 'Divers';
     if (langueActuelle === 'en' && produitLightbox.categorie_nom_en) nomCategorie = produitLightbox.categorie_nom_en;
     if (langueActuelle === 'ar' && produitLightbox.categorie_nom_ar) nomCategorie = produitLightbox.categorie_nom_ar;
     document.getElementById('lb-categorie').innerText = nomCategorie;
     document.getElementById('lb-btn-ajouter').innerText = traductions[langueActuelle].add_to_cart;
-    
     noteActuelle = 5;
     document.querySelectorAll('#etoiles-input span').forEach((s, i) => { if(i < 5) s.classList.add('active'); });
     document.getElementById('form-avis').reset();
-
     document.getElementById('lightbox-modal').classList.add('show');
     chargerAvis(id);
 }
-
 function jouerVideoLightbox() {
     document.getElementById('btn-play-video').style.display = 'none';
     document.getElementById('lb-image').style.display = 'none';
     document.getElementById('lb-video').style.display = 'block';
     document.getElementById('lb-video').play();
 }
-
-function fermerLightbox() { 
-    document.getElementById('lightbox-modal').classList.remove('show'); 
-    const videoEl = document.getElementById('lb-video'); videoEl.pause(); videoEl.currentTime = 0;
-}
-
+function fermerLightbox() { document.getElementById('lightbox-modal').classList.remove('show'); const videoEl = document.getElementById('lb-video'); videoEl.pause(); videoEl.currentTime = 0; }
 function ajouterDepuisLightbox() { if (produitLightbox) ajouterAuPanier(produitLightbox.id, getNomProduit(produitLightbox), produitLightbox.prix, produitLightbox.media, produitLightbox.prix_gros, produitLightbox.seuil_gros); }
-
 async function chargerAvis(productId) {
     const conteneur = document.getElementById('lb-avis-liste'); conteneur.innerHTML = `<p style="font-size:12px; color:#777;">...</p>`;
     try {
@@ -373,12 +333,7 @@ async function chargerAvis(productId) {
         });
     } catch (err) { conteneur.innerHTML = 'Erreur.'; }
 }
-
-function noter(note) {
-    noteActuelle = note;
-    document.querySelectorAll('#etoiles-input span').forEach((s, i) => { if(i < note) s.classList.add('active'); else s.classList.remove('active'); });
-}
-
+function noter(note) { noteActuelle = note; document.querySelectorAll('#etoiles-input span').forEach((s, i) => { if(i < note) s.classList.add('active'); else s.classList.remove('active'); }); }
 async function soumettreAvis(event) {
     event.preventDefault();
     const nom = document.getElementById('avis-nom').value; const comment = document.getElementById('avis-comment').value;
@@ -386,10 +341,8 @@ async function soumettreAvis(event) {
     try {
         const reponse = await fetch(`${API_URL}/reviews`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: produitLightbox.id, client_name: nom, rating: noteActuelle, comment }) });
         if (reponse.ok) { document.getElementById('form-avis').reset(); chargerAvis(produitLightbox.id); }
-    } catch (err) { alert("Erreur serveur."); }
-    finally { btn.disabled = false; btn.innerText = traductions[langueActuelle].send_review; }
+    } catch (err) { alert("Erreur serveur."); } finally { btn.disabled = false; btn.innerText = traductions[langueActuelle].send_review; }
 }
-
 function ouvrirSuivi() { document.getElementById('suivi-modal').classList.add('show'); document.getElementById('suivi-resultats').innerHTML = ''; }
 function fermerSuivi() { document.getElementById('suivi-modal').classList.remove('show'); }
 async function rechercherCommande() {
@@ -406,32 +359,19 @@ async function rechercherCommande() {
             let itemsHtml = '<ul>'; const itemsArray = typeof cmd.items === 'string' ? JSON.parse(cmd.items) : cmd.items;
             itemsArray.forEach(item => { itemsHtml += `<li>${item.qty}x ${item.nom}</li>`; }); itemsHtml += '</ul>';
             const div = document.createElement('div'); div.className = 'suivi-card';
-            div.innerHTML = `<div class="suivi-header"><h4>Commande #${cmd.id}</h4><span class="suivi-status ${statusClass}">${statusText}</span></div>
-                <div class="suivi-details"><p><strong>Date :</strong> ${date}</p><p><strong>Total :</strong> ${new Intl.NumberFormat('fr-FR').format(cmd.total)} MRU</p><div style="margin-top: 10px;">${itemsHtml}</div></div>`;
+            div.innerHTML = `<div class="suivi-header"><h4>Commande #${cmd.id}</h4><span class="suivi-status ${statusClass}">${statusText}</span></div><div class="suivi-details"><p><strong>Date :</strong> ${date}</p><p><strong>Total :</strong> ${new Intl.NumberFormat('fr-FR').format(cmd.total)} MRU</p><div style="margin-top: 10px;">${itemsHtml}</div></div>`;
             conteneur.appendChild(div);
         });
     } catch (err) { conteneur.innerHTML = `<p style="color:red; text-align:center;">Erreur serveur.</p>`; }
 }
-
 function ajouterAuPanier(id, nom, prix, image, prix_gros, seuil_gros) { 
     const itemExistant = monPanier.find(item => item.id === id); 
-    if (itemExistant) itemExistant.qty += 1; 
-    else monPanier.push({ id, nom, prix, image, prix_gros, seuil_gros, qty: 1 }); 
+    if (itemExistant) itemExistant.qty += 1; else monPanier.push({ id, nom, prix, image, prix_gros, seuil_gros, qty: 1 }); 
     sauvegarderPanier(); ouvrirPanier(); 
 }
-
-function modifierQuantite(id, changement) { 
-    const item = monPanier.find(item => item.id === id); 
-    if (item) { 
-        item.qty += changement; 
-        if (item.qty <= 0) monPanier = monPanier.filter(i => i.id !== id); 
-        sauvegarderPanier(); 
-    } 
-}
-
+function modifierQuantite(id, changement) { const item = monPanier.find(item => item.id === id); if (item) { item.qty += changement; if (item.qty <= 0) monPanier = monPanier.filter(i => i.id !== id); sauvegarderPanier(); } }
 function supprimerDuPanier(id) { monPanier = monPanier.filter(item => item.id !== id); sauvegarderPanier(); }
 function sauvegarderPanier() { localStorage.setItem('panierMangassouba', JSON.stringify(monPanier)); mettreAJourPanierUI(); }
-
 function mettreAJourPanierUI() {
     const conteneur = document.getElementById('panier-items'); const count = document.getElementById('panier-count'); let total = 0; let totalArticles = 0;
     conteneur.innerHTML = '';
@@ -440,45 +380,28 @@ function mettreAJourPanierUI() {
         monPanier.forEach(item => {
             let prixUnitaire = item.prix; let isGros = false;
             if (item.prix_gros > 0 && item.qty >= item.seuil_gros) { prixUnitaire = item.prix_gros; isGros = true; }
-            
             total += prixUnitaire * item.qty; totalArticles += item.qty;
             const div = document.createElement('div'); div.className = 'item-panier';
             const prixFormatte = new Intl.NumberFormat(langueActuelle === 'ar' ? 'ar-MR' : (langueActuelle === 'en' ? 'en-US' : 'fr-FR')).format(prixUnitaire);
             const badgeGros = isGros ? `<span style="font-size:10px; background:var(--vert); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">Prix de gros</span>` : '';
-
-            div.innerHTML = `
-                <img src="${item.image}">
-                <div class="item-details">
-                    <h4>${item.nom} ${badgeGros}</h4>
-                    <p class="prix-item">${prixFormatte} MRU</p>
-                    <div class="item-actions">
-                        <button onclick="modifierQuantite(${item.id}, -1)">-</button>
-                        <span>${item.qty}</span>
-                        <button onclick="modifierQuantite(${item.id}, 1)">+</button>
-                        <button class="btn-supprimer" onclick="supprimerDuPanier(${item.id})">X</button>
-                    </div>
-                </div>`;
+            div.innerHTML = `<img src="${item.image}"><div class="item-details"><h4>${item.nom} ${badgeGros}</h4><p class="prix-item">${prixFormatte} MRU</p><div class="item-actions"><button onclick="modifierQuantite(${item.id}, -1)">-</button><span>${item.qty}</span><button onclick="modifierQuantite(${item.id}, 1)">+</button><button class="btn-supprimer" onclick="supprimerDuPanier(${item.id})">X</button></div></div>`;
             conteneur.appendChild(div);
         });
     }
     count.innerText = totalArticles;
     const totalFormatte = new Intl.NumberFormat(langueActuelle === 'ar' ? 'ar-MR' : (langueActuelle === 'en' ? 'en-US' : 'fr-FR')).format(total);
-    document.getElementById('panier-total').innerText = totalFormatte + ' MRU';
-    calculerTotal();
+    document.getElementById('panier-total').innerText = totalFormatte + ' MRU'; calculerTotal();
 }
-
 function ouvrirPanier() { document.getElementById('panier-sidebar').classList.add('open'); document.getElementById('panier-overlay').classList.add('show'); }
 function fermerPanier() { document.getElementById('panier-sidebar').classList.remove('open'); document.getElementById('panier-overlay').classList.remove('show'); }
 function ouvrirCheckout() { if (monPanier.length === 0) return alert(traductions[langueActuelle].empty_cart); fermerPanier(); document.getElementById('checkout-modal').classList.add('show'); calculerTotal(); }
 function fermerCheckout() { document.getElementById('checkout-modal').classList.remove('show'); }
-
 function calculerTotal() {
     let sousTotal = monPanier.reduce((acc, item) => {
         let prixUnitaire = item.prix;
         if (item.prix_gros > 0 && item.qty >= item.seuil_gros) prixUnitaire = item.prix_gros;
         return acc + (prixUnitaire * item.qty);
     }, 0);
-    
     let reduction = promoAppliquee ? (sousTotal * promoAppliquee.discount_percent) / 100 : 0;
     const formatter = new Intl.NumberFormat(langueActuelle === 'ar' ? 'ar-MR' : (langueActuelle === 'en' ? 'en-US' : 'fr-FR'));
     document.getElementById('checkout-sous-total').innerText = formatter.format(sousTotal);
@@ -486,7 +409,6 @@ function calculerTotal() {
     if (reduction > 0) { document.getElementById('ligne-reduction').style.display = 'flex'; document.getElementById('checkout-reduction').innerText = formatter.format(reduction); }
     else document.getElementById('ligne-reduction').style.display = 'none';
 }
-
 async function verifierPromo() {
     const code = document.getElementById('promoCode').value; if (!code) return;
     try {
@@ -496,11 +418,9 @@ async function verifierPromo() {
         else { alert(data.message); promoAppliquee = null; calculerTotal(); }
     } catch (erreur) { console.error(erreur); }
 }
-
 async function envoyerCommande(event) {
     event.preventDefault();
     const btn = event.target.querySelector('button[type="submit"]'); btn.innerText = "..."; btn.disabled = true;
-    
     let sousTotal = 0;
     const itemsToOrder = monPanier.map(item => {
         let appliedPrice = item.prix;
@@ -508,7 +428,6 @@ async function envoyerCommande(event) {
         sousTotal += appliedPrice * item.qty;
         return { id: item.id, nom: item.nom, prix: appliedPrice, qty: item.qty };
     });
-
     const reduction = promoAppliquee ? (sousTotal * promoAppliquee.discount_percent) / 100 : 0;
     const commandeData = { 
         clientName: document.getElementById('clientName').value, 
@@ -520,12 +439,10 @@ async function envoyerCommande(event) {
         promo_code: promoAppliquee ? promoAppliquee.code : null, 
         discount_amount: reduction, total: sousTotal - reduction 
     };
-
     try {
         const reponse = await fetch(`${API_URL}/orders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(commandeData) });
         const data = await reponse.json();
         if (reponse.ok) { alert(`✅ Commande confirmée ! Numéro : #${data.order.id}`); monPanier = []; promoAppliquee = null; sauvegarderPanier(); fermerCheckout(); if(tokenClient) verifierSessionClient(); }
         else alert("Erreur : " + data.message);
-    } catch (erreur) { alert("Erreur de connexion."); }
-    finally { btn.innerText = traductions[langueActuelle].confirm_btn; btn.disabled = false; }
+    } catch (erreur) { alert("Erreur de connexion."); } finally { btn.innerText = traductions[langueActuelle].confirm_btn; btn.disabled = false; }
 }

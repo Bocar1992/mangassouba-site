@@ -1,4 +1,4 @@
-const API_URL = 'https://mangassouba-site.onrender.com/api'; // URL DE PRODUCTION
+const API_URL = 'https://mangassouba-site.onrender.com/api';
 let tokenAdmin = localStorage.getItem('adminToken');
 let adminData = JSON.parse(localStorage.getItem('adminData')) || null;
 let toutesLesCategories = [];
@@ -20,6 +20,10 @@ async function seConnecter(event) {
     event.preventDefault();
     const email = document.getElementById('admin-email').value;
     const password = document.getElementById('admin-password').value;
+    const errorDiv = document.getElementById('login-error');
+    
+    if(errorDiv) errorDiv.style.display = 'none';
+
     try {
         const reponse = await fetch(`${API_URL}/auth/login`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -32,10 +36,12 @@ async function seConnecter(event) {
             localStorage.setItem('adminData', JSON.stringify(adminData));
             afficherDashboard();
         } else {
-            document.getElementById('login-error').style.display = 'block';
-            document.getElementById('login-error').innerText = data.message;
+            if(errorDiv) {
+                errorDiv.style.display = 'block';
+                errorDiv.innerText = data.message || "Erreur de connexion.";
+            }
         }
-    } catch (err) { alert("Erreur serveur."); }
+    } catch (err) { alert("Erreur serveur. Le serveur Render met parfois 50s à se réveiller. Patience !"); }
 }
 
 function seDeconnecter() { localStorage.removeItem('adminToken'); localStorage.removeItem('adminData'); window.location.reload(); }
@@ -61,7 +67,6 @@ function changerOnglet(nomOnglet, elementMenu) {
     if (nomOnglet === 'admins') chargerAdminsAdmin();
 }
 
-// ==================== STATS ====================
 async function chargerStats() {
     try {
         const reponse = await fetch(`${API_URL}/stats`, { headers: { 'Authorization': `Bearer ${tokenAdmin}` } });
@@ -230,7 +235,7 @@ async function sauvegarderCommande() {
 }
 
 async function supprimerCommande(id) {
-    if (!confirm("Voulez-vous vraiment supprimer cette commande ? Le stock des produits sera remis à jour automatiquement.")) return;
+    if (!confirm("Voulez-vous vraiment supprimer cette commande ? Le stock des produits sera remis à jour.")) return;
     try {
         const reponse = await fetch(`${API_URL}/orders/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } });
         if (reponse.ok) { chargerCommandesAdmin(); chargerStats(); }
