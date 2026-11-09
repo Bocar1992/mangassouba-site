@@ -44,7 +44,12 @@ async function seConnecter(event) {
     } catch (err) { alert("Erreur serveur. Le serveur Render met parfois 50s à se réveiller."); }
 }
 
-function seDeconnecter() { localStorage.removeItem('adminToken'); localStorage.removeItem('adminData'); window.location.reload(); }
+// REDIRECTION VERS L'ACCUEIL LORS DE LA DÉCONNEXION
+function seDeconnecter() { 
+    localStorage.removeItem('adminToken'); 
+    localStorage.removeItem('adminData'); 
+    window.location.href = 'index.html'; 
+}
 
 function afficherDashboard() {
     document.getElementById('login-screen').style.display = 'none';
@@ -79,6 +84,7 @@ async function chargerStats() {
     } catch (err) { console.error(err); }
 }
 
+// ==================== MON COMPTE ====================
 function ouvrirMonCompte() {
     if (!adminData) { alert("Veuillez vous reconnecter."); return; }
     document.getElementById('modal-mon-compte').classList.add('show');
@@ -98,6 +104,7 @@ async function changerMonMotDePasse() {
     } catch (err) { alert("Erreur."); } finally { btn.innerText = "Mettre à jour"; btn.disabled = false; }
 }
 
+// ==================== COMMANDES ====================
 async function chargerCommandesAdmin() {
     try {
         const reponse = await fetch(`${API_URL}/orders`, { headers: { 'Authorization': `Bearer ${tokenAdmin}` } });
@@ -241,6 +248,7 @@ async function supprimerCommande(id) {
     } catch (err) { alert("Erreur serveur."); }
 }
 
+// ==================== GESTION DES ANNONCES ====================
 async function chargerBannersAdmin() {
     try {
         const reponse = await fetch(`${API_URL}/banners/admin`, { headers: { 'Authorization': `Bearer ${tokenAdmin}` } });
@@ -273,6 +281,7 @@ async function sauvegarderBanner() {
 }
 async function supprimerBanner(id) { if(!confirm("Supprimer ?")) return; try { const rep = await fetch(`${API_URL}/banners/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if(rep.ok) chargerBannersAdmin(); } catch(e) { alert("Erreur."); } }
 
+// ==================== GESTION DES PRODUITS ====================
 async function chargerProduitsAdmin() {
     try {
         const reponse = await fetch(`${API_URL}/products`); tousLesProduits = await reponse.json();
@@ -335,6 +344,7 @@ async function sauvegarderProduit() {
 }
 async function supprimerProduit(id) { if (!confirm("Supprimer ce produit ?")) return; try { const reponse = await fetch(`${API_URL}/products/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if (reponse.ok) { chargerProduitsAdmin(); chargerStats(); } } catch (err) { alert("Erreur serveur."); } }
 
+// ==================== COMPTABILITÉ ====================
 async function chargerFinances() {
     try {
         const reponse = await fetch(`${API_URL}/stats`, { headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); const data = await reponse.json();
@@ -417,6 +427,7 @@ async function genererProforma() {
 }
 async function supprimerProforma(id) { if (!confirm("Supprimer ?")) return; try { const reponse = await fetch(`${API_URL}/accounting/proformas/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if (reponse.ok) chargerProformasAdmin(); } catch (err) { alert("Erreur."); } }
 
+// ==================== CATÉGORIES, CLIENTS & ADMINS ====================
 async function chargerCategoriesAdmin() {
     try {
         const reponse = await fetch(`${API_URL}/categories`); toutesLesCategories = await reponse.json();
