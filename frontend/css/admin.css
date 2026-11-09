@@ -16,7 +16,7 @@ body { background-color: var(--fond); color: var(--bleu-nuit); }
 #dashboard-screen { display: none; min-height: 100vh; }
 .layout { display: flex; height: 100vh; overflow: hidden; }
 
-/* Barre latérale */
+/* Barre latérale (Desktop) */
 .sidebar { width: 250px; background: var(--bleu-nuit); color: white; display: flex; flex-direction: column; flex-shrink: 0; }
 .sidebar-logo { padding: 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; gap: 10px; }
 .sidebar-logo img { height: 40px; }
@@ -75,18 +75,18 @@ th { background: #f8f9fa; font-weight: 600; color: #555; }
         overflow: visible;
     }
 
-    /* 2. Sidebar : Transformée en menu horizontal défilant */
+    /* 2. Sidebar : Menu horizontal défilant */
     .sidebar {
         width: 100%;
         height: auto;
         flex-direction: row;
         align-items: center;
         overflow-x: auto;
-        padding-bottom: 5px; /* Espace pour la barre de défilement */
+        position: relative;
     }
     
-    .sidebar-logo, .sidebar-footer {
-        display: none; /* On cache le logo et le bouton déconnexion pour gagner de la place */
+    .sidebar-logo {
+        display: none; /* On cache le logo pour gagner de la place */
     }
 
     .sidebar-menu {
@@ -94,12 +94,13 @@ th { background: #f8f9fa; font-weight: 600; color: #555; }
         flex-direction: row;
         padding: 0;
         margin: 0;
+        padding-right: 90px; /* Laisse de la place à droite pour le bouton Déconnexion */
     }
 
     .sidebar-menu li {
         padding: 15px;
         border-left: none;
-        border-bottom: 4px solid transparent; /* Indicateur actif en bas */
+        border-bottom: 4px solid transparent;
         font-size: 14px;
     }
 
@@ -109,7 +110,27 @@ th { background: #f8f9fa; font-weight: 600; color: #555; }
         background: rgba(255,255,255,0.1);
     }
 
-    /* 3. Contenu principal : On réduit les marges */
+    /* 3. BOUTON DECONNEXION : Fixé à droite */
+    .sidebar-footer {
+        display: block;
+        position: absolute;
+        top: 0;
+        right: 0;
+        height: 100%;
+        padding: 0;
+        border-top: none;
+        background: var(--bleu-nuit); /* Évite que le texte passe dessous */
+        border-left: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .btn-logout {
+        height: 100%;
+        border-radius: 0;
+        padding: 0 15px;
+        font-size: 12px;
+    }
+
+    /* 4. Contenu principal : On réduit les marges */
     .main-content {
         padding: 15px;
         overflow-y: visible;
@@ -117,13 +138,13 @@ th { background: #f8f9fa; font-weight: 600; color: #555; }
 
     .page-title { font-size: 22px; margin-bottom: 20px; }
 
-    /* 4. Grille de stats : On passe à 1 colonne */
+    /* 5. Grille de stats : On passe à 1 colonne */
     .stats-grid {
         grid-template-columns: 1fr;
         gap: 15px;
     }
 
-    /* 5. Barre d'action : Les boutons passent en dessous du texte */
+    /* 6. Barre d'action : Les boutons passent en dessous du texte */
     .action-bar {
         flex-direction: column;
         align-items: flex-start;
@@ -131,22 +152,19 @@ th { background: #f8f9fa; font-weight: 600; color: #555; }
     
     .btn-add { width: 100%; justify-content: center; }
 
-    /* 6. Formulaires en grille dans les modales : On écrase les colonnes */
+    /* 7. Formulaires en grille dans les modales : On écrase les colonnes */
     .modal-content-admin div[style*="grid-template-columns"] {
         grid-template-columns: 1fr !important;
     }
 
-    /* 7. Modales : Prendre presque tout l'écran */
+    /* 8. Modales : Prendre presque tout l'écran */
     .modal-content-admin {
         padding: 20px;
         width: 100%;
     }
 
-    /* 8. Ajustements spécifiques pour les éléments de la comptabilité */
+    /* 9. Ajustements spécifiques pour les éléments de la comptabilité */
     #section-comptabilite > div[style*="display: flex"] {
         flex-direction: column !important;
     }
-    
-    /* Forcer les boutons de déconnexion sur mobile si on les veut visibles */
-    /* Vous pouvez ajouter un bouton déconnexion dans l'en-tête si nécessaire */
 }
