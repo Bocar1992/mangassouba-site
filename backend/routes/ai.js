@@ -5,22 +5,32 @@ require('dotenv').config();
 
 async function appelerGemini(prompt) {
     try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+        // ⚠️ NOUVEAU MODÈLE : gemini-2.5-flash (compatible avec les nouvelles clés AQ.)
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+        
         const reponse = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            body: JSON.stringify({ 
+                contents: [{ parts: [{ text: prompt }] }] 
+            })
         });
+        
         const data = await reponse.json();
         
+        // Si Google répond avec une erreur, on l'affiche dans les logs Render
+        if (data.error) {
+            console.error("Erreur renvoyée par Google :", data.error);
+            throw new Error(data.error.message);
+        }
+
         if (data.candidates && data.candidates.length > 0) {
             return data.candidates[0].content.parts[0].text;
         } else {
-            console.error("Erreur Gemini (pas de réponse) :", data);
-            throw new Error("L'API Gemini a refusé la requête.");
+            throw new Error("L'API Gemini a renvoyé une réponse vide.");
         }
     } catch (err) {
-        console.error("Erreur de connexion à Gemini :", err.message);
+        console.error("❌ Erreur de connexion à Gemini :", err.message);
         throw err;
     }
 }
@@ -34,17 +44,17 @@ router.post('/chat', async (req, res) => {
 
         const prompt = `
         Tu es l'assistant virtuel de la boutique "Mangassouba et Fils" située à Sélibaby, Mauritanie.
-        Numéros : 00222 46 43 22 53 / 00222 42 43 22 53.
+        Numéros de téléphone : 00222 46 43 22 53 / 00222 42 43 22 53.
         Horaires : Tous les jours (sauf vendredi) : 08h00 - 18h00.
         Produits en stock : ${listeProduits || 'Aucun pour le moment'}.
         Question du client : "${message}"
         Réponds brièvement et poliment.
         `;
+        
         const reponseIA = await appelerGemini(prompt);
         res.json({ response: reponseIA });
     } catch (err) {
-        // On renvoie une erreur propre au client
-        res.status(500).json({ response: "Désolé, je ne peux pas répondre pour le moment. Veuillez nous contacter au 00222 46 43 22 53." });
+        res.status(500).json({ response: "Désolé, je ne peux pas répondre pour le moment (Erreur technique). Veuillez nous contacter au 00222 46 43 22 53." });
     }
 });
 
@@ -54,18 +64,20 @@ router.post('/admin/generate-product', async (req, res) => {
     try {
         const prompt = `
         Tu es un assistant pour le gérant de la boutique.
-        Texte fourni : "${texte}"
-        Génère un objet JSON STRICTEMENT valide avec les clés suivantes :
+        Voici un texte brut fourni par le gérant : "${texte}"
+        Tu dois extraire les informations et générer un objet JSON STRICTEMENT valide avec les clés suivantes :
         - "nom" (string)
         - "prix" (number)
-        - "description" (string)
+        - "description" (string, courte)
         - "stock" (number)
-        - "prix_achat" (number, estime-le si absent, sinon 0)
+        - "prix_achat" (number, estime-le si non fourni, sinon 0)
+        
         Ne renvoie QUE le JSON, sans texte avant ou après, sans balises markdown.
         `;
+        
         let reponseIA = await appelerGemini(prompt);
         
-        // Nettoyage de sécurité
+        // Nettoyage de sécurité au cas où l'IA ajoute des balises ```
         reponseIA = reponseIA.replace(/```json/g, '').replace(/```/g, '').trim();
         
         try {
@@ -73,11 +85,10 @@ router.post('/admin/generate-product', async (req, res) => {
             res.json(produitJSON);
         } catch (parseError) {
             console.error("L'IA n'a pas renvoyé du JSON valide. Texte reçu :", reponseIA);
-            res.status(500).json({ message: "L'IA a répondu, mais pas dans le bon format. Réessayez." });
+            res.status(500).json({ message: "L'IA a répondu, mais pas dans le bon format." });
         }
     } catch (err) {
-        console.error("Erreur API Admin :", err.message);
-        res.status(500).json({ message: "Erreur de communication avec l'IA. Vérifiez la clé API." });
+        res.status(500).json({ message: "Erreur de communication avec l'IA." });
     }
 });
 
