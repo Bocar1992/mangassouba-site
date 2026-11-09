@@ -1,11 +1,12 @@
-const API_URL = 'https://mangassouba-site.onrender.com/api';
+const API_URL = 'https://mangassouba-site.onrender.com/api'; // URL DE PRODUCTION
 let tokenAdmin = localStorage.getItem('adminToken');
 let adminData = JSON.parse(localStorage.getItem('adminData')) || null;
 let toutesLesCategories = [];
 let tousLesProduits = [];
 let tousLesAdmins = [];
+let commandesGlobales = [];
 let lignesProforma = [];
-let commandeLignes = []; // NOUVEAU
+let commandeLignes = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     if (tokenAdmin && adminData) afficherDashboard();
@@ -92,14 +93,15 @@ async function changerMonMotDePasse() {
     } catch (err) { alert("Erreur."); } finally { btn.innerText = "Mettre à jour"; btn.disabled = false; }
 }
 
-// ==================== COMMANDES (MISE A JOUR) ====================
+// ==================== COMMANDES ====================
 async function chargerCommandesAdmin() {
     try {
         const reponse = await fetch(`${API_URL}/orders`, { headers: { 'Authorization': `Bearer ${tokenAdmin}` } });
-        const commandes = await reponse.json(); const tbody = document.getElementById('liste-commandes-admin'); tbody.innerHTML = '';
-        if(commandes.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Aucune commande.</td></tr>'; return; }
+        commandesGlobales = await reponse.json(); 
+        const tbody = document.getElementById('liste-commandes-admin'); tbody.innerHTML = '';
+        if(commandesGlobales.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Aucune commande.</td></tr>'; return; }
         
-        commandes.forEach(cmd => {
+        commandesGlobales.forEach(cmd => {
             const date = new Date(cmd.created_at).toLocaleDateString('fr-FR');
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -161,7 +163,6 @@ function ouvrirModaleCommande(id = null) {
     afficherLignesCommande();
 }
 function fermerModaleCommande() { document.getElementById('modal-commande').classList.remove('show'); }
-
 function ajouterLigneCommande() { commandeLignes.push({ nom: '', prix: 0, qty: 1 }); afficherLignesCommande(); }
 
 function afficherLignesCommande() {
@@ -208,7 +209,6 @@ async function sauvegarderCommande() {
     if(!clientName) return alert("Le nom du client est obligatoire.");
     if(commandeLignes.length === 0) return alert("Ajoutez au moins un article.");
 
-    // Nettoyer les lignes pour ne garder que l'essentiel
     const itemsToSend = commandeLignes.map(l => ({ id: l.produitId || null, nom: l.nom, prix: l.prix, qty: l.qty }));
     const total = itemsToSend.reduce((acc, l) => acc + (l.prix * l.qty), 0);
 
@@ -237,12 +237,7 @@ async function supprimerCommande(id) {
     } catch (err) { alert("Erreur serveur."); }
 }
 
-// Variables globales (ajout de commandesGlobales)
-let commandesGlobales = [];
-// Remplace la déclaration de chargerCommandesAdmin plus haut par celle-ci pour stocker les données :
-// (Attention à bien remplacer la fonction chargerCommandesAdmin pour y inclure commandesGlobales = commandes;)
-
-// ==================== GESTION DES ANNONCES (BANNERS) ====================
+// ==================== GESTION DES ANNONCES ====================
 async function chargerBannersAdmin() {
     try {
         const reponse = await fetch(`${API_URL}/banners/admin`, { headers: { 'Authorization': `Bearer ${tokenAdmin}` } });
@@ -488,6 +483,6 @@ async function sauvegarderAdmin() {
     const id = document.getElementById('admin-id').value; const nom = document.getElementById('admin-nom').value; const email = document.getElementById('admin-new-email').value; const password = document.getElementById('admin-new-password').value; const role = document.getElementById('admin-role').value;
     if (!nom || !email) return alert("Nom et email obligatoires.");
     const url = id ? `${API_URL}/admins/${id}` : `${API_URL}/admins`; const method = id ? 'PUT' : 'POST';
-    try { const reponse = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenAdmin}` }, body: JSON.stringify({ nom, email, password, role }) }); if (reponse.ok) { fermerModaleAdmin(); chargerAdminsAdmin(); } else { const d = await reponse.json(); alert(d.message); } } catch (err) { alert("Erreur serveur."); }
+    try { const reponse = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenAdmin}` }, body: JSON.stringify({ nom, email, password, role }) }); if (reponse.ok) { fermerModaleAdmin(); chargerAdminsAdmin(); } else { const d = await reponse.json(); alert(d.message); } } catch (err) { alert("Erreur serveur."); } }
 }
 async function supprimerAdmin(id) { if (!confirm("Supprimer ?")) return; try { const reponse = await fetch(`${API_URL}/admins/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if (reponse.ok) chargerAdminsAdmin(); } catch (err) { alert("Erreur."); } }

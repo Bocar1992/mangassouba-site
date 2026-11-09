@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-const API_URL ='https://mangassouba-site.onrender.com/api'
-=======
-const API_URL = 'https://mangassouba-site.onrender.com/api';
->>>>>>> 84bb5ae775b7f701ad6e568c994180ca6af3a1e2
+const API_URL = 'https://mangassouba-site.onrender.com/api'; // URL DE PRODUCTION
 let monPanier = JSON.parse(localStorage.getItem('panierMangassouba')) || [];
 let promoAppliquee = null;
 let toutesLesCategories = [];
@@ -72,7 +68,6 @@ function getNomCat(cat) { if (langueActuelle === 'en' && cat.nom_en) return cat.
 function getNomProduit(prod) { if (langueActuelle === 'en' && prod.nom_en) return prod.nom_en; if (langueActuelle === 'ar' && prod.nom_ar) return prod.nom_ar; return prod.nom; }
 function getDescProduit(prod) { if (langueActuelle === 'en' && prod.description_en) return prod.description_en; if (langueActuelle === 'ar' && prod.description_ar) return prod.description_ar; return prod.description; }
 
-// ==================== CARROUSEL D'ANNONCES ====================
 async function chargerCarrousel() {
     try {
         const rep = await fetch(`${API_URL}/banners`);
@@ -114,7 +109,6 @@ async function chargerCarrousel() {
     } catch (e) { console.error("Erreur carrousel:", e); }
 }
 
-// ==================== CATÉGORIES & PRODUITS ====================
 async function chargerCategories() {
     try {
         const reponse = await fetch(`${API_URL}/categories`);
@@ -235,7 +229,6 @@ function afficherProduits(produits) {
     });
 }
 
-// ==================== ESPACE CLIENT ====================
 function ouvrirClient() { if (tokenClient) ouvrirProfil(); else document.getElementById('client-modal').classList.add('show'); }
 function fermerClient() { document.getElementById('client-modal').classList.remove('show'); }
 function ouvrirProfil() { document.getElementById('profil-modal').classList.add('show'); chargerProfilClient(); }
@@ -324,7 +317,6 @@ async function chargerProfilClient() {
     } catch (e) { console.error(e); }
 }
 
-// ==================== LIGHTBOX & AVIS ====================
 async function ouvrirLightbox(id) {
     produitLightbox = tousLesProduits.find(p => p.id === id);
     if(!produitLightbox) return;
@@ -398,7 +390,6 @@ async function soumettreAvis(event) {
     finally { btn.disabled = false; btn.innerText = traductions[langueActuelle].send_review; }
 }
 
-// ==================== SUIVI ====================
 function ouvrirSuivi() { document.getElementById('suivi-modal').classList.add('show'); document.getElementById('suivi-resultats').innerHTML = ''; }
 function fermerSuivi() { document.getElementById('suivi-modal').classList.remove('show'); }
 async function rechercherCommande() {
@@ -422,7 +413,6 @@ async function rechercherCommande() {
     } catch (err) { conteneur.innerHTML = `<p style="color:red; text-align:center;">Erreur serveur.</p>`; }
 }
 
-// ==================== PANIER & CHECKOUT ====================
 function ajouterAuPanier(id, nom, prix, image, prix_gros, seuil_gros) { 
     const itemExistant = monPanier.find(item => item.id === id); 
     if (itemExistant) itemExistant.qty += 1; 
