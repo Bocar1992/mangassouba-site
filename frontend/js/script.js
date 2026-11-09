@@ -71,7 +71,7 @@ function getDescProduit(prod) { if (langueActuelle === 'en' && prod.description_
 async function chargerCarrousel() {
     try {
         const rep = await fetch(`${API_URL}/banners`);
-        if (!rep.ok) return; // Si erreur serveur, on ne plante pas
+        if (!rep.ok) return;
         const banners = await rep.json();
         const conteneur = document.getElementById('carrousel-container');
         if(!conteneur) return;
@@ -106,7 +106,6 @@ async function chargerCategories() {
         if (!reponse.ok) throw new Error("Serveur en cours de réveil...");
         const data = await reponse.json();
         
-        // SÉCURITÉ : Si l'API renvoie autre chose qu'une liste (ex: erreur), on évite le crash
         toutesLesCategories = Array.isArray(data) ? data : [];
         
         const liste = document.getElementById('liste-categories-sidebar');
@@ -478,4 +477,43 @@ async function envoyerCommande(event) {
         if (reponse.ok) { alert(`✅ Commande confirmée ! Numéro : #${data.order.id}`); monPanier = []; promoAppliquee = null; sauvegarderPanier(); fermerCheckout(); if(tokenClient) verifierSessionClient(); }
         else alert("Erreur : " + data.message);
     } catch (erreur) { alert("Erreur de connexion."); } finally { btn.innerText = traductions[langueActuelle].confirm_btn; btn.disabled = false; }
+}
+
+// ==================== AGENT IA CLIENT ====================
+function toggleChatIA() {
+    const win = document.getElementById('ai-chat-window');
+    win.style.display = win.style.display === 'none' ? 'flex' : 'none';
+}
+
+async function envoyerMessageIA() {
+    const input = document.getElementById('ai-chat-input');
+    const message = input.value.trim();
+    if (!message) return;
+
+    const messagesContainer = document.getElementById('ai-chat-messages');
+    
+    // Afficher le message du client
+    messagesContainer.innerHTML += `<div style="background: var(--bleu-nuit); color: white; padding: 10px; border-radius: 8px; align-self: flex-end; max-width: 80%;">${message}</div>`;
+    input.value = '';
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    // Afficher "L'assistant écrit..."
+    const loadingId = 'loading-' + Date.now();
+    messagesContainer.innerHTML += `<div id="${loadingId}" style="background: #e8f5e9; padding: 10px; border-radius: 8px; align-self: flex-start;">...</div>`;
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    try {
+        const rep = await fetch(`${API_URL}/ai/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message })
+        });
+        const data = await rep.json();
+        
+        document.getElementById(loadingId).remove();
+        messagesContainer.innerHTML += `<div style="background: #e8f5e9; padding: 10px; border-radius: 8px; align-self: flex-start; max-width: 80%;">${data.response}</div>`;
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    } catch (e) {
+        document.getElementById(loadingId).innerText = "Désolé, je suis hors ligne.";
+    }
 }

@@ -273,6 +273,23 @@
         </div>
     </div>
 
+    <!-- ================= AGENT IA CLIENT ================= -->
+    <button id="ai-chat-btn" onclick="toggleChatIA()" style="position: fixed; bottom: 20px; right: 20px; background: var(--or); color: var(--bleu-nuit); border: none; width: 60px; height: 60px; border-radius: 50%; font-size: 30px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 9999;">🤖</button>
+
+    <div id="ai-chat-window" style="display: none; position: fixed; bottom: 90px; right: 20px; width: 350px; max-width: 90vw; height: 500px; max-height: 70vh; background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 9999; flex-direction: column; overflow: hidden;">
+        <div style="background: var(--bleu-nuit); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 16px; margin: 0;">Assistant Mangassouba</h3>
+            <button onclick="toggleChatIA()" style="background: none; border: none; color: white; font-size: 20px; cursor: pointer;">&times;</button>
+        </div>
+        <div id="ai-chat-messages" style="flex-grow: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #f9f9f9;">
+            <div style="background: #e8f5e9; padding: 10px; border-radius: 8px; align-self: flex-start; max-width: 80%;">Bonjour ! Comment puis-je vous aider aujourd'hui ?</div>
+        </div>
+        <div style="padding: 10px; border-top: 1px solid #ddd; display: flex; gap: 10px;">
+            <input type="text" id="ai-chat-input" placeholder="Posez votre question..." style="flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none;" onkeypress="if(event.key === 'Enter') envoyerMessageIA()">
+            <button onclick="envoyerMessageIA()" style="background: var(--vert); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer;">➤</button>
+        </div>
+    </div>
+
     <script src="js/script.js"></script>
 </body>
 </html>

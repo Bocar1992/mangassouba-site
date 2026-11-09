@@ -20,6 +20,7 @@ const customerRoutes = require('./routes/customers');
 const accountingRoutes = require('./routes/accounting');
 const reviewRoutes = require('./routes/reviews');
 const bannerRoutes = require('./routes/banners'); // NOUVEAU
+const aiRoutes = require('./routes/ai'); // NOUVEAU
 
 // --- UTILISATION DES ROUTES ---
 app.use('/api/auth', authRoutes);
@@ -34,7 +35,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/accounting', accountingRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/banners', bannerRoutes); // NOUVEAU
-
+app.use('/api/ai', aiRoutes); // NOUVEAU
 app.get('/api/test', (req, res) => {
   res.json({ message: "Bienvenue sur le serveur de Mangassouba et Fils !" });
 });

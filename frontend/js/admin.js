@@ -21,14 +21,9 @@ async function seConnecter(event) {
     const email = document.getElementById('admin-email').value;
     const password = document.getElementById('admin-password').value;
     const errorDiv = document.getElementById('login-error');
-    
     if(errorDiv) errorDiv.style.display = 'none';
-
     try {
-        const reponse = await fetch(`${API_URL}/auth/login`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
+        const reponse = await fetch(`${API_URL}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
         const data = await reponse.json();
         if (reponse.ok) {
             tokenAdmin = data.token; adminData = data.admin; 
@@ -36,26 +31,17 @@ async function seConnecter(event) {
             localStorage.setItem('adminData', JSON.stringify(adminData));
             afficherDashboard();
         } else {
-            if(errorDiv) {
-                errorDiv.style.display = 'block';
-                errorDiv.innerText = data.message || "Erreur de connexion.";
-            }
+            if(errorDiv) { errorDiv.style.display = 'block'; errorDiv.innerText = data.message || "Erreur de connexion."; }
         }
     } catch (err) { alert("Erreur serveur. Le serveur Render met parfois 50s à se réveiller."); }
 }
 
-// REDIRECTION VERS L'ACCUEIL LORS DE LA DÉCONNEXION
-function seDeconnecter() { 
-    localStorage.removeItem('adminToken'); 
-    localStorage.removeItem('adminData'); 
-    window.location.href = 'index.html'; 
-}
+function seDeconnecter() { localStorage.removeItem('adminToken'); localStorage.removeItem('adminData'); window.location.href = 'index.html'; }
 
 function afficherDashboard() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('dashboard-screen').style.display = 'block';
-    chargerStats(); 
-    chargerCategoriesAdmin();
+    chargerStats(); chargerCategoriesAdmin();
 }
 
 function changerOnglet(nomOnglet, elementMenu) {
@@ -84,7 +70,6 @@ async function chargerStats() {
     } catch (err) { console.error(err); }
 }
 
-// ==================== MON COMPTE ====================
 function ouvrirMonCompte() {
     if (!adminData) { alert("Veuillez vous reconnecter."); return; }
     document.getElementById('modal-mon-compte').classList.add('show');
@@ -104,7 +89,6 @@ async function changerMonMotDePasse() {
     } catch (err) { alert("Erreur."); } finally { btn.innerText = "Mettre à jour"; btn.disabled = false; }
 }
 
-// ==================== COMMANDES ====================
 async function chargerCommandesAdmin() {
     try {
         const reponse = await fetch(`${API_URL}/orders`, { headers: { 'Authorization': `Bearer ${tokenAdmin}` } });
@@ -163,12 +147,8 @@ function ouvrirModaleCommande(id = null) {
         commandeLignes = typeof cmd.items === 'string' ? JSON.parse(cmd.items) : cmd.items;
     } else {
         document.getElementById('modal-cmd-titre').innerText = "Nouvelle Commande";
-        document.getElementById('cmd-id').value = '';
-        document.getElementById('cmd-client').value = '';
-        document.getElementById('cmd-phone').value = '';
-        document.getElementById('cmd-address').value = '';
-        document.getElementById('cmd-payment').value = 'Espèces';
-        document.getElementById('cmd-status').value = 'confirmée';
+        document.getElementById('cmd-id').value = ''; document.getElementById('cmd-client').value = ''; document.getElementById('cmd-phone').value = ''; document.getElementById('cmd-address').value = '';
+        document.getElementById('cmd-payment').value = 'Espèces'; document.getElementById('cmd-status').value = 'confirmée';
         commandeLignes = [];
     }
     afficherLignesCommande();
@@ -228,16 +208,9 @@ async function sauvegarderCommande() {
     const btn = document.querySelector('#modal-commande .btn-save'); btn.innerText = "Traitement..."; btn.disabled = true;
 
     try {
-        const reponse = await fetch(url, {
-            method: method,
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenAdmin}` },
-            body: JSON.stringify({ clientName, phone, address, payment, status, items: itemsToSend, total })
-        });
-        if (reponse.ok) {
-            fermerModaleCommande(); chargerCommandesAdmin(); chargerStats();
-        } else { const d = await reponse.json(); alert(d.message); }
-    } catch (err) { alert("Erreur serveur."); }
-    finally { btn.innerText = "Enregistrer"; btn.disabled = false; }
+        const reponse = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenAdmin}` }, body: JSON.stringify({ clientName, phone, address, payment, status, items: itemsToSend, total }) });
+        if (reponse.ok) { fermerModaleCommande(); chargerCommandesAdmin(); chargerStats(); } else { const d = await reponse.json(); alert(d.message); }
+    } catch (err) { alert("Erreur serveur."); } finally { btn.innerText = "Enregistrer"; btn.disabled = false; }
 }
 
 async function supprimerCommande(id) {
@@ -248,7 +221,6 @@ async function supprimerCommande(id) {
     } catch (err) { alert("Erreur serveur."); }
 }
 
-// ==================== GESTION DES ANNONCES ====================
 async function chargerBannersAdmin() {
     try {
         const reponse = await fetch(`${API_URL}/banners/admin`, { headers: { 'Authorization': `Bearer ${tokenAdmin}` } });
@@ -257,20 +229,12 @@ async function chargerBannersAdmin() {
         if(banners.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Aucune annonce.</td></tr>'; return; }
         banners.forEach(b => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><img src="${b.image_url}" style="width: 80px; height: 40px; object-fit: cover; border-radius: 5px;"></td>
-                <td><strong>${b.title}</strong></td>
-                <td>${b.link_url || '-'}</td>
-                <td>${b.is_active ? '<span style="color:green; font-weight:bold;">Actif</span>' : '<span style="color:red;">Inactif</span>'}</td>
-                <td><button class="btn-action btn-delete" onclick="supprimerBanner(${b.id})">Supprimer</button></td>`;
+            tr.innerHTML = `<td><img src="${b.image_url}" style="width: 80px; height: 40px; object-fit: cover; border-radius: 5px;"></td><td><strong>${b.title}</strong></td><td>${b.link_url || '-'}</td><td>${b.is_active ? '<span style="color:green; font-weight:bold;">Actif</span>' : '<span style="color:red;">Inactif</span>'}</td><td><button class="btn-action btn-delete" onclick="supprimerBanner(${b.id})">Supprimer</button></td>`;
             tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
 }
-function ouvrirModaleBanner() {
-    document.getElementById('modal-banner').classList.add('show');
-    document.getElementById('banner-title').value = ''; document.getElementById('banner-desc').value = ''; document.getElementById('banner-link').value = ''; document.getElementById('banner-image').value = '';
-}
+function ouvrirModaleBanner() { document.getElementById('modal-banner').classList.add('show'); document.getElementById('banner-title').value = ''; document.getElementById('banner-desc').value = ''; document.getElementById('banner-link').value = ''; document.getElementById('banner-image').value = ''; }
 function fermerModaleBanner() { document.getElementById('modal-banner').classList.remove('show'); }
 async function sauvegarderBanner() {
     const title = document.getElementById('banner-title').value; const description = document.getElementById('banner-desc').value; const link_url = document.getElementById('banner-link').value; const imageFile = document.getElementById('banner-image').files[0];
@@ -281,7 +245,6 @@ async function sauvegarderBanner() {
 }
 async function supprimerBanner(id) { if(!confirm("Supprimer ?")) return; try { const rep = await fetch(`${API_URL}/banners/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if(rep.ok) chargerBannersAdmin(); } catch(e) { alert("Erreur."); } }
 
-// ==================== GESTION DES PRODUITS ====================
 async function chargerProduitsAdmin() {
     try {
         const reponse = await fetch(`${API_URL}/products`); tousLesProduits = await reponse.json();
@@ -290,22 +253,14 @@ async function chargerProduitsAdmin() {
             const imageUrl = prod.media ? prod.media : 'https://via.placeholder.com/50x50?text=?';
             const prixGrosTxt = prod.prix_gros > 0 ? `${new Intl.NumberFormat('fr-FR').format(prod.prix_gros)} MRU <br><small>(dès ${prod.seuil_gros})</small>` : '-';
             const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><img src="${imageUrl}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;"></td>
-                <td><strong>${prod.nom}</strong> ${prod.video ? '🎥' : ''}</td>
-                <td>${new Intl.NumberFormat('fr-FR').format(prod.prix)} MRU</td>
-                <td style="color: #004085;">${prixGrosTxt}</td>
-                <td style="color: ${prod.stock < 5 ? 'red' : 'inherit'}; font-weight: ${prod.stock < 5 ? 'bold' : 'normal'};">${prod.stock}</td>
-                <td>
-                    <button class="btn-action btn-edit" onclick="ouvrirModaleProduit(${prod.id})">Modifier</button>
-                    <button class="btn-action btn-delete" onclick="supprimerProduit(${prod.id})">Supprimer</button>
-                </td>`;
+            tr.innerHTML = `<td><img src="${imageUrl}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;"></td><td><strong>${prod.nom}</strong> ${prod.video ? '🎥' : ''}</td><td>${new Intl.NumberFormat('fr-FR').format(prod.prix)} MRU</td><td style="color: #004085;">${prixGrosTxt}</td><td style="color: ${prod.stock < 5 ? 'red' : 'inherit'}; font-weight: ${prod.stock < 5 ? 'bold' : 'normal'};">${prod.stock}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleProduit(${prod.id})">Modifier</button><button class="btn-action btn-delete" onclick="supprimerProduit(${prod.id})">Supprimer</button></td>`;
             tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
 }
 function ouvrirModaleProduit(id = null) {
     document.getElementById('modal-produit').classList.add('show');
+    document.getElementById('ai-prod-prompt').value = '';
     const selectCat = document.getElementById('prod-category'); selectCat.innerHTML = '<option value="">-- Choisir --</option>';
     toutesLesCategories.forEach(cat => { const nomAffichage = cat.parent_nom ? `↳ ${cat.parent_nom} > ${cat.nom}` : cat.nom; selectCat.innerHTML += `<option value="${cat.id}">${nomAffichage}</option>`; });
     if (id) {
@@ -344,7 +299,6 @@ async function sauvegarderProduit() {
 }
 async function supprimerProduit(id) { if (!confirm("Supprimer ce produit ?")) return; try { const reponse = await fetch(`${API_URL}/products/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if (reponse.ok) { chargerProduitsAdmin(); chargerStats(); } } catch (err) { alert("Erreur serveur."); } }
 
-// ==================== COMPTABILITÉ ====================
 async function chargerFinances() {
     try {
         const reponse = await fetch(`${API_URL}/stats`, { headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); const data = await reponse.json();
@@ -396,12 +350,7 @@ function afficherLignesProforma() {
     lignesProforma.forEach((ligne, index) => {
         total += (ligne.prix * ligne.qty);
         const div = document.createElement('div'); div.style.cssText = "display: flex; gap: 10px; margin-bottom: 10px; align-items: center;";
-        div.innerHTML = `
-            <select onchange="changerProduitProforma(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">${optionsProduits}</select>
-            <input type="text" placeholder="Nom libre" value="${ligne.nom}" oninput="modifierNomLigne(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc; ${ligne.produitId ? 'display:none;' : ''}">
-            <input type="number" placeholder="Qté" value="${ligne.qty}" min="1" oninput="modifierQteLigne(${index}, this.value)" style="width: 60px; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
-            <input type="number" placeholder="Prix" value="${ligne.prix}" min="0" oninput="modifierPrixLigne(${index}, this.value)" style="width: 90px; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
-            <button onclick="supprimerLigneProforma(${index})" style="background: red; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer;">X</button>`;
+        div.innerHTML = `<select onchange="changerProduitProforma(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">${optionsProduits}</select><input type="text" placeholder="Nom libre" value="${ligne.nom}" oninput="modifierNomLigne(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc; ${ligne.produitId ? 'display:none;' : ''}"><input type="number" placeholder="Qté" value="${ligne.qty}" min="1" oninput="modifierQteLigne(${index}, this.value)" style="width: 60px; padding: 8px; border-radius: 5px; border: 1px solid #ccc;"><input type="number" placeholder="Prix" value="${ligne.prix}" min="0" oninput="modifierPrixLigne(${index}, this.value)" style="width: 90px; padding: 8px; border-radius: 5px; border: 1px solid #ccc;"><button onclick="supprimerLigneProforma(${index})" style="background: red; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer;">X</button>`;
         const select = div.querySelector('select'); if(ligne.produitId) select.value = ligne.produitId;
         conteneur.appendChild(div);
     });
@@ -427,7 +376,6 @@ async function genererProforma() {
 }
 async function supprimerProforma(id) { if (!confirm("Supprimer ?")) return; try { const reponse = await fetch(`${API_URL}/accounting/proformas/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if (reponse.ok) chargerProformasAdmin(); } catch (err) { alert("Erreur."); } }
 
-// ==================== CATÉGORIES, CLIENTS & ADMINS ====================
 async function chargerCategoriesAdmin() {
     try {
         const reponse = await fetch(`${API_URL}/categories`); toutesLesCategories = await reponse.json();
@@ -435,8 +383,7 @@ async function chargerCategoriesAdmin() {
         toutesLesCategories.forEach(cat => {
             const parentName = cat.parent_nom ? cat.parent_nom : '<span style="color:#999;">Aucune</span>';
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>#${cat.id}</td><td><strong>${cat.nom}</strong></td><td><span style="font-size:12px; color:#555;">EN: ${cat.nom_en || '-'}<br>AR: ${cat.nom_ar || '-'}</span></td><td>${parentName}</td>
-                <td><button class="btn-action btn-edit" onclick="ouvrirModaleCategorie(${cat.id})">Modifier</button><button class="btn-action btn-delete" onclick="supprimerCategorie(${cat.id})">Supprimer</button></td>`;
+            tr.innerHTML = `<td>#${cat.id}</td><td><strong>${cat.nom}</strong></td><td><span style="font-size:12px; color:#555;">EN: ${cat.nom_en || '-'}<br>AR: ${cat.nom_ar || '-'}</span></td><td>${parentName}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleCategorie(${cat.id})">Modifier</button><button class="btn-action btn-delete" onclick="supprimerCategorie(${cat.id})">Supprimer</button></td>`;
             tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
@@ -496,3 +443,31 @@ async function sauvegarderAdmin() {
     const url = id ? `${API_URL}/admins/${id}` : `${API_URL}/admins`; const method = id ? 'PUT' : 'POST';
     try { const reponse = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenAdmin}` }, body: JSON.stringify({ nom, email, password, role }) }); if (reponse.ok) { fermerModaleAdmin(); chargerAdminsAdmin(); } else { const d = await reponse.json(); alert(d.message); } } catch (err) { alert("Erreur serveur."); } }
 async function supprimerAdmin(id) { if (!confirm("Supprimer ?")) return; try { const reponse = await fetch(`${API_URL}/admins/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if (reponse.ok) chargerAdminsAdmin(); } catch (err) { alert("Erreur."); } }
+
+// ==================== ASSISTANT IA ADMIN ====================
+async function genererProduitIA() {
+    const texte = document.getElementById('ai-prod-prompt').value;
+    if (!texte) return alert("Veuillez décrire le produit à ajouter.");
+    
+    const btn = document.getElementById('btn-ai-generate');
+    btn.innerText = "🪄 L'IA réfléchit..."; btn.disabled = true;
+
+    try {
+        const rep = await fetch(`${API_URL}/ai/admin/generate-product`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ texte })
+        });
+        const data = await rep.json();
+        
+        if (data.nom) document.getElementById('prod-nom').value = data.nom;
+        if (data.prix) document.getElementById('prod-prix').value = data.prix;
+        if (data.description) document.getElementById('prod-desc').value = data.description;
+        if (data.stock) document.getElementById('prod-stock').value = data.stock;
+        if (data.prix_achat) document.getElementById('prod-prix-achat').value = data.prix_achat;
+        
+        document.getElementById('ai-prod-prompt').value = '';
+        
+    } catch (e) { alert("L'IA n'a pas pu comprendre la demande."); } 
+    finally { btn.innerText = "✨ Remplir le formulaire automatiquement"; btn.disabled = false; }
+}
