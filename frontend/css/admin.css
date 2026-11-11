@@ -168,3 +168,4 @@ th { background: #f8f9fa; font-weight: 600; color: #555; }
         flex-direction: column !important;
     }
 }
+.status-annulee { background: #f8d7da; color: #721c24; }

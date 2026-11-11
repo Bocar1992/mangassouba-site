@@ -2,10 +2,17 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const db = require('../db');
-const { verifyAdmin } = require('../middleware/auth');
+const { verifyAdmin, requireSuperAdmin } = require('../middleware/auth');
+const { cleanStr, toId, isEmail, checkPassword } = require('../utils/validate');
+
+const ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 12;
+const ROLES = ['admin', 'superadmin'];
+
+// Toute la gestion des comptes admin est réservée au Super Admin
+router.use(verifyAdmin, requireSuperAdmin);
 
 // 1. VOIR TOUS LES ADMINS
-router.get('/', verifyAdmin, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const result = await db.query('SELECT id, nom, email, role, created_at FROM admins ORDER BY created_at DESC');
     res.json(result.rows);
@@ -13,55 +20,93 @@ router.get('/', verifyAdmin, async (req, res) => {
 });
 
 // 2. CRÉER UN NOUVEL ADMIN
-router.post('/', verifyAdmin, async (req, res) => {
-  const { nom, email, password, role } = req.body;
+router.post('/', async (req, res) => {
+  const nom = cleanStr(req.body.nom, 100);
+  const email = cleanStr(req.body.email, 150).toLowerCase();
+  const role = req.body.role || 'admin';
+  const { password } = req.body;
+
   if (!nom || !email || !password) return res.status(400).json({ message: 'Champs obligatoires manquants.' });
+  if (!isEmail(email)) return res.status(400).json({ message: 'Email invalide.' });
+  if (!ROLES.includes(role)) return res.status(400).json({ message: 'Rôle invalide.' });
+  const pwError = checkPassword(password);
+  if (pwError) return res.status(400).json({ message: pwError });
 
   try {
-    const check = await db.query('SELECT * FROM admins WHERE email = $1', [email]);
+    const check = await db.query('SELECT id FROM admins WHERE LOWER(email) = $1', [email]);
     if (check.rows.length > 0) return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
+    const hashedPassword = await bcrypt.hash(password, ROUNDS);
     const result = await db.query(
       'INSERT INTO admins (nom, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, nom, email, role',
-      [nom, email, hashedPassword, role || 'admin']
+      [nom, email, hashedPassword, role]
     );
     res.status(201).json({ message: 'Admin créé avec succès !', admin: result.rows[0] });
-  } catch (err) { res.status(500).json({ message: 'Erreur serveur.' }); }
+  } catch (err) {
+    if (err.code === '23505') return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
 });
 
 // 3. MODIFIER UN ADMIN
-router.put('/:id', verifyAdmin, async (req, res) => {
-  const { id } = req.params;
-  const { nom, email, password, role } = req.body;
+router.put('/:id', async (req, res) => {
+  const id = toId(req.params.id);
+  if (!id) return res.status(400).json({ message: 'Identifiant invalide.' });
+
+  const nom = cleanStr(req.body.nom, 100);
+  const email = cleanStr(req.body.email, 150).toLowerCase();
+  const role = req.body.role || 'admin';
+  const password = typeof req.body.password === 'string' ? req.body.password.trim() : '';
+
+  if (!nom || !email) return res.status(400).json({ message: 'Nom et email obligatoires.' });
+  if (!isEmail(email)) return res.status(400).json({ message: 'Email invalide.' });
+  if (!ROLES.includes(role)) return res.status(400).json({ message: 'Rôle invalide.' });
+  if (password) {
+    const pwError = checkPassword(password);
+    if (pwError) return res.status(400).json({ message: pwError });
+  }
+
+  // Le Super Admin principal (id 1) ne peut être modifié que par lui-même
+  if (id === 1 && req.admin.id !== 1) {
+    return res.status(403).json({ message: 'Seul le Super Admin principal peut modifier son propre compte.' });
+  }
+  // ...et il ne peut pas perdre son rôle (sinon plus personne ne gère les admins)
+  if (id === 1 && role !== 'superadmin') {
+    return res.status(400).json({ message: 'Le Super Admin principal doit rester Super Admin.' });
+  }
 
   try {
-    let query = 'UPDATE admins SET nom = $1, email = $2, role = $3';
-    let params = [nom, email, role, id];
+    const dup = await db.query('SELECT id FROM admins WHERE LOWER(email) = $1 AND id <> $2', [email, id]);
+    if (dup.rows.length > 0) return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
 
-    // Si un nouveau mot de passe est fourni, on le hash
-    if (password && password.trim() !== '') {
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
-      query += ', password = $4 WHERE id = $5 RETURNING id, nom, email, role';
-      params = [nom, email, role, hashedPassword, id];
+    let result;
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, ROUNDS);
+      result = await db.query(
+        'UPDATE admins SET nom = $1, email = $2, role = $3, password = $4 WHERE id = $5 RETURNING id, nom, email, role',
+        [nom, email, role, hashedPassword, id]
+      );
     } else {
-      query += ' WHERE id = $4 RETURNING id, nom, email, role';
+      result = await db.query(
+        'UPDATE admins SET nom = $1, email = $2, role = $3 WHERE id = $4 RETURNING id, nom, email, role',
+        [nom, email, role, id]
+      );
     }
-
-    const result = await db.query(query, params);
     if (result.rows.length === 0) return res.status(404).json({ message: 'Admin introuvable.' });
     res.json({ message: 'Admin modifié avec succès !', admin: result.rows[0] });
-  } catch (err) { res.status(500).json({ message: 'Erreur serveur.' }); }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
 });
 
 // 4. SUPPRIMER UN ADMIN
-router.delete('/:id', verifyAdmin, async (req, res) => {
-  const { id } = req.params;
-  // Empêcher de supprimer le tout premier superadmin (id=1) par sécurité
-  if (id === '1') return res.status(403).json({ message: 'Impossible de supprimer le Super Admin principal.' });
+router.delete('/:id', async (req, res) => {
+  const id = toId(req.params.id);
+  if (!id) return res.status(400).json({ message: 'Identifiant invalide.' });
+  if (id === 1) return res.status(403).json({ message: 'Impossible de supprimer le Super Admin principal.' });
+  if (id === req.admin.id) return res.status(400).json({ message: 'Vous ne pouvez pas supprimer votre propre compte.' });
 
   try {
     await db.query('DELETE FROM admins WHERE id = $1', [id]);

@@ -338,3 +338,6 @@ body[dir="rtl"] .suivi-details ul { padding-left: 0; padding-right: 20px; }
     }
     .carte-produit img { height: 200px; }
 }
+.status-annulee { background: #f8d7da; color: #721c24; }
+.btn-ajouter:disabled, .btn-ajouter:disabled:hover { background: #8899a6; cursor: not-allowed; }
+.info-produit h3 { overflow-wrap: anywhere; }

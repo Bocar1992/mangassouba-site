@@ -1,4 +1,23 @@
-const API_URL = 'https://mangassouba-site.onrender.com/api';
+const API_URL = window.MANGASSOUBA_API_URL
+    || (['localhost', '127.0.0.1'].includes(location.hostname) ? 'http://localhost:3000/api' : 'https://mangassouba-site.onrender.com/api');
+
+// ---- Sécurité XSS : à utiliser sur toute donnée dynamique insérée via innerHTML ----
+function esc(valeur) {
+    return String(valeur ?? '').replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]));
+}
+function safeUrl(url) {
+    const u = String(url || '').trim();
+    return /^https?:\/\//i.test(u) ? u : '';
+}
+const IMG_VIDE = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><rect width="100%" height="100%" fill="#eef1f4"/><text x="50%" y="50%" fill="#8899a6" font-family="sans-serif" font-size="18" text-anchor="middle" dominant-baseline="middle">?</text></svg>`);
+
+// Si le serveur répond 401 (session expirée, compte supprimé), on renvoie à l'écran de connexion
+const _fetchOrigine = window.fetch.bind(window);
+window.fetch = async (...args) => {
+    const reponse = await _fetchOrigine(...args);
+    if (reponse.status === 401 && String(args[0]).startsWith(API_URL) && !String(args[0]).includes('/auth/login')) seDeconnecter();
+    return reponse;
+};
 let tokenAdmin = localStorage.getItem('adminToken');
 let adminData = JSON.parse(localStorage.getItem('adminData')) || null;
 let toutesLesCategories = [];
@@ -41,7 +60,11 @@ function seDeconnecter() { localStorage.removeItem('adminToken'); localStorage.r
 function afficherDashboard() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('dashboard-screen').style.display = 'block';
-    chargerStats(); chargerCategoriesAdmin();
+    chargerStats(); chargerCategoriesAdmin(); chargerProduitsAdmin();
+    const estSuper = adminData && (adminData.role === 'superadmin' || adminData.id === 1);
+    document.querySelectorAll('.sidebar-menu li').forEach(li => {
+        if ((li.getAttribute('onclick') || '').includes("'admins'")) li.style.display = estSuper ? '' : 'none';
+    });
 }
 
 function changerOnglet(nomOnglet, elementMenu) {
@@ -101,7 +124,7 @@ async function chargerCommandesAdmin() {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>#${cmd.id}</td>
-                <td><strong>${cmd.clientName}</strong><br><small>${cmd.phone}</small></td>
+                <td><strong>${esc(cmd.clientName)}</strong><br><small>${esc(cmd.phone)}</small></td>
                 <td>${new Intl.NumberFormat('fr-FR').format(cmd.total)} MRU</td>
                 <td>${date}</td>
                 <td>
@@ -109,6 +132,7 @@ async function chargerCommandesAdmin() {
                         <option value="en attente" ${cmd.status === 'en attente' ? 'selected' : ''}>En attente</option>
                         <option value="confirmée" ${cmd.status === 'confirmée' ? 'selected' : ''}>Confirmée</option>
                         <option value="livrée" ${cmd.status === 'livrée' ? 'selected' : ''}>Livrée</option>
+                        <option value="annulée" ${cmd.status === 'annulée' ? 'selected' : ''}>Annulée</option>
                     </select>
                 </td>
                 <td><button class="btn-action btn-edit" onclick="telechargerFacture(${cmd.id})">📄 PDF</button></td>
@@ -122,7 +146,7 @@ async function chargerCommandesAdmin() {
 }
 
 async function changerStatutCommande(id, nouveauStatut) {
-    try { const reponse = await fetch(`${API_URL}/orders/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenAdmin}` }, body: JSON.stringify({ status: nouveauStatut }) }); if (reponse.ok) chargerStats(); } catch (err) { alert("Erreur."); }
+    try { const reponse = await fetch(`${API_URL}/orders/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenAdmin}` }, body: JSON.stringify({ status: nouveauStatut }) }); if (reponse.ok) chargerStats(); else { const d = await reponse.json(); alert(d.message || 'Erreur.'); chargerCommandesAdmin(); } } catch (err) { alert("Erreur."); }
 }
 
 async function telechargerFacture(id) {
@@ -144,7 +168,9 @@ function ouvrirModaleCommande(id = null) {
         document.getElementById('cmd-address').value = cmd.address || '';
         document.getElementById('cmd-payment').value = cmd.payment;
         document.getElementById('cmd-status').value = cmd.status;
-        commandeLignes = typeof cmd.items === 'string' ? JSON.parse(cmd.items) : cmd.items;
+        const lignes = typeof cmd.items === 'string' ? JSON.parse(cmd.items) : cmd.items;
+        // IMPORTANT : on conserve l'identifiant produit (produitId), sinon le stock n'est plus géré à l'enregistrement
+        commandeLignes = lignes.map(l => ({ ...l, produitId: l.id || null }));
     } else {
         document.getElementById('modal-cmd-titre').innerText = "Nouvelle Commande";
         document.getElementById('cmd-id').value = ''; document.getElementById('cmd-client').value = ''; document.getElementById('cmd-phone').value = ''; document.getElementById('cmd-address').value = '';
@@ -161,7 +187,7 @@ function afficherLignesCommande() {
     if(commandeLignes.length === 0) { conteneur.innerHTML = '<p style="font-size:13px; color:#777; text-align:center;">Aucun article.</p>'; document.getElementById('cmd-total').innerText = 0; return; }
     
     let optionsProduits = '<option value="">-- Article personnalisé --</option>';
-    tousLesProduits.forEach(p => { optionsProduits += `<option value="${p.id}">${p.nom} (${p.prix} MRU)</option>`; });
+    tousLesProduits.forEach(p => { optionsProduits += `<option value="${Number(p.id)}">${esc(p.nom)} (${Number(p.prix)} MRU)</option>`; });
     
     let total = 0;
     commandeLignes.forEach((ligne, index) => {
@@ -169,7 +195,7 @@ function afficherLignesCommande() {
         const div = document.createElement('div'); div.style.cssText = "display: flex; gap: 10px; margin-bottom: 10px; align-items: center;";
         div.innerHTML = `
             <select onchange="changerProduitCommande(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">${optionsProduits}</select>
-            <input type="text" placeholder="Nom libre" value="${ligne.nom}" oninput="modifierNomLigneCmd(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc; ${ligne.produitId ? 'display:none;' : ''}">
+            <input type="text" placeholder="Nom libre" value="${esc(ligne.nom)}" oninput="modifierNomLigneCmd(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc; ${ligne.produitId ? 'display:none;' : ''}">
             <input type="number" placeholder="Qté" value="${ligne.qty}" min="1" oninput="modifierQteLigneCmd(${index}, this.value)" style="width: 60px; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
             <input type="number" placeholder="Prix" value="${ligne.prix}" min="0" oninput="modifierPrixLigneCmd(${index}, this.value)" style="width: 90px; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
             <button onclick="supprimerLigneCommande(${index})" style="background: red; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer;">X</button>`;
@@ -229,7 +255,7 @@ async function chargerBannersAdmin() {
         if(banners.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Aucune annonce.</td></tr>'; return; }
         banners.forEach(b => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td><img src="${b.image_url}" style="width: 80px; height: 40px; object-fit: cover; border-radius: 5px;"></td><td><strong>${b.title}</strong></td><td>${b.link_url || '-'}</td><td>${b.is_active ? '<span style="color:green; font-weight:bold;">Actif</span>' : '<span style="color:red;">Inactif</span>'}</td><td><button class="btn-action btn-delete" onclick="supprimerBanner(${b.id})">Supprimer</button></td>`;
+            tr.innerHTML = `<td><img src="${esc(safeUrl(b.image_url) || IMG_VIDE)}" alt="" style="width: 80px; height: 40px; object-fit: cover; border-radius: 5px;"></td><td><strong>${esc(b.title)}</strong></td><td>${esc(b.link_url || '-')}</td><td>${b.is_active ? '<span style="color:green; font-weight:bold;">Actif</span>' : '<span style="color:red;">Inactif</span>'}</td><td><button class="btn-action btn-delete" onclick="supprimerBanner(${b.id})">Supprimer</button></td>`;
             tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
@@ -241,19 +267,20 @@ async function sauvegarderBanner() {
     if(!title || !imageFile) return alert("Titre et image obligatoires.");
     const formData = new FormData(); formData.append('title', title); formData.append('description', description); formData.append('link_url', link_url); formData.append('image', imageFile);
     const btn = document.querySelector('#modal-banner .btn-save'); btn.innerText = "Traitement..."; btn.disabled = true;
-    try { const reponse = await fetch(`${API_URL}/banners`, { method: 'POST', headers: { 'Authorization': `Bearer ${tokenAdmin}` }, body: formData }); if(reponse.ok) { fermerModaleBanner(); chargerBannersAdmin(); } } catch(e) { alert("Erreur serveur."); } finally { btn.innerText = "Enregistrer"; btn.disabled = false; }
+    try { const reponse = await fetch(`${API_URL}/banners`, { method: 'POST', headers: { 'Authorization': `Bearer ${tokenAdmin}` }, body: formData }); if(reponse.ok) { fermerModaleBanner(); chargerBannersAdmin(); } else { const d = await reponse.json(); alert(d.message || 'Erreur.'); } } catch(e) { alert("Erreur serveur."); } finally { btn.innerText = "Enregistrer"; btn.disabled = false; }
 }
 async function supprimerBanner(id) { if(!confirm("Supprimer ?")) return; try { const rep = await fetch(`${API_URL}/banners/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if(rep.ok) chargerBannersAdmin(); } catch(e) { alert("Erreur."); } }
 
 async function chargerProduitsAdmin() {
     try {
-        const reponse = await fetch(`${API_URL}/products`); tousLesProduits = await reponse.json();
+        const reponse = await fetch(`${API_URL}/products/admin`, { headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); tousLesProduits = await reponse.json();
+        if (!Array.isArray(tousLesProduits)) { tousLesProduits = []; return; }
         const tbody = document.getElementById('liste-produits-admin'); tbody.innerHTML = '';
         tousLesProduits.forEach(prod => {
-            const imageUrl = prod.media ? prod.media : 'https://via.placeholder.com/50x50?text=?';
+            const imageUrl = safeUrl(prod.media) || IMG_VIDE;
             const prixGrosTxt = prod.prix_gros > 0 ? `${new Intl.NumberFormat('fr-FR').format(prod.prix_gros)} MRU <br><small>(dès ${prod.seuil_gros})</small>` : '-';
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td><img src="${imageUrl}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;"></td><td><strong>${prod.nom}</strong> ${prod.video ? '🎥' : ''}</td><td>${new Intl.NumberFormat('fr-FR').format(prod.prix)} MRU</td><td style="color: #004085;">${prixGrosTxt}</td><td style="color: ${prod.stock < 5 ? 'red' : 'inherit'}; font-weight: ${prod.stock < 5 ? 'bold' : 'normal'};">${prod.stock}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleProduit(${prod.id})">Modifier</button><button class="btn-action btn-delete" onclick="supprimerProduit(${prod.id})">Supprimer</button></td>`;
+            tr.innerHTML = `<td><img src="${esc(imageUrl)}" alt="" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;"></td><td><strong>${esc(prod.nom)}</strong> ${prod.video ? '🎥' : ''}</td><td>${new Intl.NumberFormat('fr-FR').format(prod.prix)} MRU</td><td style="color: #004085;">${prixGrosTxt}</td><td style="color: ${prod.stock < 5 ? 'red' : 'inherit'}; font-weight: ${prod.stock < 5 ? 'bold' : 'normal'};">${prod.stock}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleProduit(${prod.id})">Modifier</button><button class="btn-action btn-delete" onclick="supprimerProduit(${prod.id})">Supprimer</button></td>`;
             tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
@@ -262,7 +289,7 @@ function ouvrirModaleProduit(id = null) {
     document.getElementById('modal-produit').classList.add('show');
     document.getElementById('ai-prod-prompt').value = '';
     const selectCat = document.getElementById('prod-category'); selectCat.innerHTML = '<option value="">-- Choisir --</option>';
-    toutesLesCategories.forEach(cat => { const nomAffichage = cat.parent_nom ? `↳ ${cat.parent_nom} > ${cat.nom}` : cat.nom; selectCat.innerHTML += `<option value="${cat.id}">${nomAffichage}</option>`; });
+    toutesLesCategories.forEach(cat => { const nomAffichage = cat.parent_nom ? `↳ ${cat.parent_nom} > ${cat.nom}` : cat.nom; selectCat.innerHTML += `<option value="${Number(cat.id)}">${esc(nomAffichage)}</option>`; });
     if (id) {
         const prod = tousLesProduits.find(p => p.id === id);
         document.getElementById('modal-prod-titre').innerText = "Modifier le produit"; document.getElementById('prod-id').value = prod.id;
@@ -306,6 +333,7 @@ async function chargerFinances() {
         document.getElementById('fin-depenses').innerText = new Intl.NumberFormat('fr-FR').format(data.totalDepenses) + ' MRU';
         document.getElementById('fin-stock').innerText = new Intl.NumberFormat('fr-FR').format(data.valeurStock) + ' MRU';
         const beneficeEl = document.getElementById('fin-benefice'); beneficeEl.innerText = new Intl.NumberFormat('fr-FR').format(data.benefice) + ' MRU'; beneficeEl.style.color = data.benefice >= 0 ? 'var(--vert)' : 'red';
+        const margeEl = document.getElementById('fin-marge'); if (margeEl) margeEl.innerText = new Intl.NumberFormat('fr-FR').format(data.margeBrute || 0) + ' MRU';
     } catch (err) { console.error(err); }
 }
 async function chargerDepensesAdmin() {
@@ -315,7 +343,7 @@ async function chargerDepensesAdmin() {
         if(depenses.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Aucune dépense.</td></tr>'; return; }
         depenses.forEach(d => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${new Date(d.date).toLocaleDateString('fr-FR')}</td><td><strong>${d.description}</strong></td><td><span style="background:#eee; padding:2px 6px; border-radius:4px; font-size:12px;">${d.category}</span></td><td style="color:red; font-weight:bold;">-${new Intl.NumberFormat('fr-FR').format(d.amount)} MRU</td><td><button class="btn-action btn-delete" onclick="supprimerDepense(${d.id})">X</button></td>`;
+            tr.innerHTML = `<td>${new Date(d.date).toLocaleDateString('fr-FR')}</td><td><strong>${esc(d.description)}</strong></td><td><span style="background:#eee; padding:2px 6px; border-radius:4px; font-size:12px;">${esc(d.category)}</span></td><td style="color:red; font-weight:bold;">-${new Intl.NumberFormat('fr-FR').format(d.amount)} MRU</td><td><button class="btn-action btn-delete" onclick="supprimerDepense(${d.id})">X</button></td>`;
             tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
@@ -335,7 +363,7 @@ async function chargerProformasAdmin() {
         const tbody = document.getElementById('liste-proformas-admin'); tbody.innerHTML = '';
         if(proformas.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Aucune proforma.</td></tr>'; return; }
         proformas.forEach(p => {
-            const tr = document.createElement('tr'); tr.innerHTML = `<td>PRO-${p.id}</td><td><strong>${p.client_name}</strong></td><td>${new Intl.NumberFormat('fr-FR').format(p.total)} MRU</td><td><button class="btn-action btn-delete" onclick="supprimerProforma(${p.id})">X</button></td>`; tbody.appendChild(tr);
+            const tr = document.createElement('tr'); tr.innerHTML = `<td>PRO-${p.id}</td><td><strong>${esc(p.client_name)}</strong></td><td>${new Intl.NumberFormat('fr-FR').format(p.total)} MRU</td><td><button class="btn-action btn-delete" onclick="supprimerProforma(${p.id})">X</button></td>`; tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
 }
@@ -345,12 +373,12 @@ function ajouterLigneProforma() { lignesProforma.push({ nom: '', prix: 0, qty: 1
 function afficherLignesProforma() {
     const conteneur = document.getElementById('proforma-lignes'); conteneur.innerHTML = '';
     if(lignesProforma.length === 0) { conteneur.innerHTML = '<p style="font-size:13px; color:#777; text-align:center;">Aucun article.</p>'; document.getElementById('prof-total').innerText = 0; return; }
-    let optionsProduits = '<option value="">-- Article personnalisé --</option>'; tousLesProduits.forEach(p => { optionsProduits += `<option value="${p.id}">${p.nom} (${p.prix} MRU)</option>`; });
+    let optionsProduits = '<option value="">-- Article personnalisé --</option>'; tousLesProduits.forEach(p => { optionsProduits += `<option value="${Number(p.id)}">${esc(p.nom)} (${Number(p.prix)} MRU)</option>`; });
     let total = 0;
     lignesProforma.forEach((ligne, index) => {
         total += (ligne.prix * ligne.qty);
         const div = document.createElement('div'); div.style.cssText = "display: flex; gap: 10px; margin-bottom: 10px; align-items: center;";
-        div.innerHTML = `<select onchange="changerProduitProforma(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">${optionsProduits}</select><input type="text" placeholder="Nom libre" value="${ligne.nom}" oninput="modifierNomLigne(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc; ${ligne.produitId ? 'display:none;' : ''}"><input type="number" placeholder="Qté" value="${ligne.qty}" min="1" oninput="modifierQteLigne(${index}, this.value)" style="width: 60px; padding: 8px; border-radius: 5px; border: 1px solid #ccc;"><input type="number" placeholder="Prix" value="${ligne.prix}" min="0" oninput="modifierPrixLigne(${index}, this.value)" style="width: 90px; padding: 8px; border-radius: 5px; border: 1px solid #ccc;"><button onclick="supprimerLigneProforma(${index})" style="background: red; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer;">X</button>`;
+        div.innerHTML = `<select onchange="changerProduitProforma(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">${optionsProduits}</select><input type="text" placeholder="Nom libre" value="${esc(ligne.nom)}" oninput="modifierNomLigne(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc; ${ligne.produitId ? 'display:none;' : ''}"><input type="number" placeholder="Qté" value="${ligne.qty}" min="1" oninput="modifierQteLigne(${index}, this.value)" style="width: 60px; padding: 8px; border-radius: 5px; border: 1px solid #ccc;"><input type="number" placeholder="Prix" value="${ligne.prix}" min="0" oninput="modifierPrixLigne(${index}, this.value)" style="width: 90px; padding: 8px; border-radius: 5px; border: 1px solid #ccc;"><button onclick="supprimerLigneProforma(${index})" style="background: red; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer;">X</button>`;
         const select = div.querySelector('select'); if(ligne.produitId) select.value = ligne.produitId;
         conteneur.appendChild(div);
     });
@@ -381,9 +409,9 @@ async function chargerCategoriesAdmin() {
         const reponse = await fetch(`${API_URL}/categories`); toutesLesCategories = await reponse.json();
         const tbody = document.getElementById('liste-categories-admin'); tbody.innerHTML = '';
         toutesLesCategories.forEach(cat => {
-            const parentName = cat.parent_nom ? cat.parent_nom : '<span style="color:#999;">Aucune</span>';
+            const parentName = cat.parent_nom ? esc(cat.parent_nom) : '<span style="color:#999;">Aucune</span>';
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>#${cat.id}</td><td><strong>${cat.nom}</strong></td><td><span style="font-size:12px; color:#555;">EN: ${cat.nom_en || '-'}<br>AR: ${cat.nom_ar || '-'}</span></td><td>${parentName}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleCategorie(${cat.id})">Modifier</button><button class="btn-action btn-delete" onclick="supprimerCategorie(${cat.id})">Supprimer</button></td>`;
+            tr.innerHTML = `<td>#${cat.id}</td><td><strong>${esc(cat.nom)}</strong></td><td><span style="font-size:12px; color:#555;">EN: ${esc(cat.nom_en || '-')}<br>AR: ${esc(cat.nom_ar || '-')}</span></td><td>${parentName}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleCategorie(${cat.id})">Modifier</button><button class="btn-action btn-delete" onclick="supprimerCategorie(${cat.id})">Supprimer</button></td>`;
             tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
@@ -391,7 +419,7 @@ async function chargerCategoriesAdmin() {
 function ouvrirModaleCategorie(id = null) {
     document.getElementById('modal-categorie').classList.add('show');
     const selectParent = document.getElementById('cat-parent'); selectParent.innerHTML = '<option value="">-- Aucune --</option>';
-    toutesLesCategories.filter(c => c.parent_id === null).forEach(c => { selectParent.innerHTML += `<option value="${c.id}">${c.nom}</option>`; });
+    toutesLesCategories.filter(c => c.parent_id === null).forEach(c => { selectParent.innerHTML += `<option value="${Number(c.id)}">${esc(c.nom)}</option>`; });
     if (id) { const cat = toutesLesCategories.find(c => c.id === id); document.getElementById('modal-cat-titre').innerText = "Modifier"; document.getElementById('cat-id').value = cat.id; document.getElementById('cat-nom').value = cat.nom; selectParent.value = cat.parent_id || ""; } 
     else { document.getElementById('modal-cat-titre').innerText = "Nouvelle Catégorie"; document.getElementById('cat-id').value = ''; document.getElementById('cat-nom').value = ''; selectParent.value = ""; }
 }
@@ -411,7 +439,7 @@ async function chargerClientsAdmin() {
         if(clients.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Aucun client.</td></tr>'; return; }
         clients.forEach(c => {
             const date = new Date(c.created_at).toLocaleDateString('fr-FR');
-            const tr = document.createElement('tr'); tr.innerHTML = `<td>#${c.id}</td><td><strong>${c.name}</strong></td><td>${c.phone}</td><td>🌟 ${c.points}</td><td>${date}</td><td><button class="btn-action btn-delete" onclick="supprimerClient(${c.id})">Supprimer</button></td>`; tbody.appendChild(tr);
+            const tr = document.createElement('tr'); tr.innerHTML = `<td>#${c.id}</td><td><strong>${esc(c.name)}</strong></td><td>${esc(c.phone)}</td><td>🌟 ${c.points}</td><td>${date}</td><td><button class="btn-action btn-delete" onclick="supprimerClient(${c.id})">Supprimer</button></td>`; tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
 }
@@ -423,7 +451,7 @@ async function chargerAdminsAdmin() {
         const tbody = document.getElementById('liste-admins-admin'); tbody.innerHTML = '';
         tousLesAdmins.forEach(a => {
             const roleBadge = a.role === 'superadmin' ? '<span style="background:var(--or); color:var(--bleu-nuit); padding:2px 8px; border-radius:10px; font-size:11px; font-weight:bold;">Super Admin</span>' : 'Admin';
-            const tr = document.createElement('tr'); tr.innerHTML = `<td>#${a.id}</td><td><strong>${a.nom}</strong></td><td>${a.email}</td><td>${roleBadge}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleAdmin(${a.id})">Modifier</button>${a.id !== 1 ? `<button class="btn-action btn-delete" onclick="supprimerAdmin(${a.id})">Supprimer</button>` : ''}</td>`; tbody.appendChild(tr);
+            const tr = document.createElement('tr'); tr.innerHTML = `<td>#${a.id}</td><td><strong>${esc(a.nom)}</strong></td><td>${esc(a.email)}</td><td>${roleBadge}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleAdmin(${a.id})">Modifier</button>${a.id !== 1 ? `<button class="btn-action btn-delete" onclick="supprimerAdmin(${a.id})">Supprimer</button>` : ''}</td>`; tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
 }
@@ -455,10 +483,11 @@ async function genererProduitIA() {
     try {
         const rep = await fetch(`${API_URL}/ai/admin/generate-product`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenAdmin}` },
             body: JSON.stringify({ texte })
         });
         const data = await rep.json();
+        if (!rep.ok) { alert(data.message || "L'IA n'a pas pu comprendre la demande."); return; }
         
         if (data.nom) document.getElementById('prod-nom').value = data.nom;
         if (data.prix) document.getElementById('prod-prix').value = data.prix;

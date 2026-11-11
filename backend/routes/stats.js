@@ -5,41 +5,41 @@ const { verifyAdmin } = require('../middleware/auth');
 
 router.get('/', verifyAdmin, async (req, res) => {
   try {
-    // 1. Chiffre d'affaires (commandes livrées)
-    const caResult = await db.query("SELECT SUM(total) as ca FROM orders WHERE status = 'livrée'");
-    const chiffreAffaires = parseFloat(caResult.rows[0].ca) || 0;
+    // Toutes les statistiques en une seule requête (au lieu de 7 allers-retours)
+    const r = await db.query(`
+      SELECT
+        (SELECT COALESCE(SUM(total), 0) FROM orders WHERE status = 'livrée')            AS ca,
+        (SELECT COUNT(*) FROM orders WHERE status = 'en attente')                       AS attente,
+        (SELECT COALESCE(SUM(prix_achat * stock), 0) FROM products)                     AS valeur_stock,
+        (SELECT COALESCE(SUM(amount), 0) FROM expenses)                                 AS depenses,
+        (SELECT COUNT(*) FROM products WHERE stock < 5)                                 AS alertes,
+        (SELECT COUNT(*) FROM products)                                                 AS produits,
+        (SELECT COALESCE(SUM(
+            (COALESCE((i->>'prix')::numeric, 0) - COALESCE(p.prix_achat, 0)) * COALESCE((i->>'qty')::numeric, 0)
+         ), 0)
+         FROM orders o
+         CROSS JOIN LATERAL jsonb_array_elements(
+           CASE WHEN jsonb_typeof(o.items) = 'array' THEN o.items ELSE '[]'::jsonb END) AS i
+         LEFT JOIN products p ON p.id = NULLIF(i->>'id', '')::int
+         WHERE o.status = 'livrée')
+        - (SELECT COALESCE(SUM(discount_amount), 0) FROM orders WHERE status = 'livrée') AS marge_brute
+    `);
+    const row = r.rows[0];
 
-    // 2. Nombre de commandes en attente
-    const attenteResult = await db.query("SELECT COUNT(*) as count FROM orders WHERE status = 'en attente'");
-    const commandesEnAttente = parseInt(attenteResult.rows[0].count);
-
-    // 3. Valeur du stock (au prix d'achat)
-    const stockResult = await db.query("SELECT SUM(prix_achat * stock) as valeur FROM products");
-    const valeurStock = parseFloat(stockResult.rows[0].valeur) || 0;
-
-    // 4. Total des dépenses
-    const depensesResult = await db.query("SELECT SUM(amount) as total FROM expenses");
-    const totalDepenses = parseFloat(depensesResult.rows[0].total) || 0;
-
-    // 5. Bénéfice estimé (CA - Dépenses)
-    const benefice = chiffreAffaires - totalDepenses;
-
-    // 6. Alertes stock (moins de 5)
-    const alertesResult = await db.query("SELECT COUNT(*) as count FROM products WHERE stock < 5");
-    const alertesStock = parseInt(alertesResult.rows[0].count);
-
-    // 7. Total de produits (C'est la ligne qui manquait !)
-    const produitsResult = await db.query("SELECT COUNT(*) as count FROM products");
-    const totalProduits = parseInt(produitsResult.rows[0].count);
+    const chiffreAffaires = parseFloat(row.ca) || 0;
+    const totalDepenses = parseFloat(row.depenses) || 0;
 
     res.json({
       chiffreAffaires,
-      commandesEnAttente,
-      valeurStock,
+      commandesEnAttente: parseInt(row.attente),
+      valeurStock: parseFloat(row.valeur_stock) || 0,
       totalDepenses,
-      benefice,
-      alertesStock,
-      totalProduits // On l'ajoute ici
+      // Bénéfice estimé = CA - dépenses (les achats de stock sont saisis dans les dépenses)
+      benefice: chiffreAffaires - totalDepenses,
+      // Information complémentaire : marge sur les ventes livrées (prix de vente - prix d'achat actuel - remises)
+      margeBrute: parseFloat(row.marge_brute) || 0,
+      alertesStock: parseInt(row.alertes),
+      totalProduits: parseInt(row.produits),
     });
   } catch (err) {
     console.error(err);

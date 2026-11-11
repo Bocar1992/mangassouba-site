@@ -1,4 +1,21 @@
-const API_URL = 'https://mangassouba-site.onrender.com/api';
+// L'API est détectée automatiquement : locale en développement, Render en production.
+// (On peut forcer une URL avec <script>window.MANGASSOUBA_API_URL = 'https://...'</script> avant ce fichier.)
+const API_URL = window.MANGASSOUBA_API_URL
+    || (['localhost', '127.0.0.1'].includes(location.hostname) ? 'http://localhost:3000/api' : 'https://mangassouba-site.onrender.com/api');
+
+// ---- Sécurité XSS ----
+// À utiliser sur TOUTE donnée venant d'un utilisateur ou de la base avant de l'insérer dans innerHTML.
+function esc(valeur) {
+    return String(valeur ?? '').replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]));
+}
+// Lien / image autorisés : http(s) uniquement (bloque javascript:, data:, etc.)
+function safeUrl(url) {
+    const u = String(url || '').trim();
+    return /^https?:\/\//i.test(u) ? u : '';
+}
+// Image de remplacement intégrée (l'ancien via.placeholder.com n'est plus fiable)
+const IMG_VIDE = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="250" height="200"><rect width="100%" height="100%" fill="#eef1f4"/><text x="50%" y="50%" fill="#8899a6" font-family="sans-serif" font-size="16" text-anchor="middle" dominant-baseline="middle">Pas d'image</text></svg>`);
+const STYLES_STATUT = { 'livrée': ['var(--vert)', '#d4edda'], 'confirmée': ['#004085', '#cce5ff'], 'annulée': ['#721c24', '#f8d7da'] };
 let monPanier = JSON.parse(localStorage.getItem('panierMangassouba')) || [];
 let promoAppliquee = null;
 let toutesLesCategories = [];
@@ -10,12 +27,13 @@ let tokenClient = localStorage.getItem('clientToken') || null;
 let clientData = JSON.parse(localStorage.getItem('clientData')) || null;
 
 const traductions = {
-    fr: { cart: "Panier", hero_badge: "Votre Commerce de Proximité", hero_title: "Bienvenue chez Mangassouba et Fils", hero_desc: "Quincaillerie, alimentation, électroménager, et bien plus encore. Retrouvez tout ce dont vous avez besoin au quotidien, au cœur de Sélibaby.", hero_btn1: "Découvrir nos produits", hero_btn2: "Nous contacter", rayons_title: "La diversité à portée de main", rayons_desc: "Que vous soyez un professionnel, un bricoleur ou simplement en quête de vos courses quotidiennes, Mangassouba et Fils est votre point de rendez-vous. Un seul magasin pour tous vos besoins.", rayon_quincaillerie: "Quincaillerie", rayon_alimentation: "Alimentation", rayon_divers: "Divers", categories: "Catégories", products: "Nos Produits", latest_products: "Nouveautés", loading: "Chargement...", footer_desc: "Votre commerce général de référence au cœur du marché de Sélibaby.", rights: "Tous droits réservés.", admin_space: "Espace Administrateur", your_cart: "Votre Panier", total: "Total :", order_btn: "Passer la commande", checkout_title: "Finaliser la commande", name: "Nom complet *", phone: "Téléphone *", address: "Adresse / Quartier *", promo: "Code Promo (Optionnel)", apply: "Appliquer", payment: "Mode de paiement *", cash: "Espèces à la livraison", momo: "Mobile Money (Sedad)", subtotal: "Sous-total :", discount: "Réduction :", total_pay: "Total à payer :", confirm_btn: "Confirmer la commande", empty_cart: "Votre panier est vide.", add_to_cart: "Ajouter au panier", no_product: "Aucun produit trouvé.", all: "Tous les produits", nav_contact: "Contact", nav_track: "Suivi", nav_login: "Connexion", password: "Mot de passe *", register_btn: "S'inscrire", logout: "Déconnexion", contact_title: "Contactez-nous", contact_desc: "Nous sommes à votre écoute pour toute question ou commande.", contact_address: "Adresse", contact_phone: "Téléphone", contact_whatsapp: "WhatsApp", contact_hours: "Horaires", contact_hours_val: "Tous les jours (sauf vendredi) : 08h00 - 18h00", track_title: "Suivi de commande", track_desc: "Entrez le numéro de téléphone utilisé lors de votre commande.", track_btn: "Rechercher", track_no_found: "Aucune commande trouvée pour ce numéro.", track_order: "Commande", track_status: "Statut", track_date: "Date", track_total: "Total", status_attente: "En attente", status_confirmee: "Confirmée", status_livree: "Livrée", search_placeholder: "Rechercher un produit...", reviews_title: "Avis Clients", leave_review: "Laisser un avis", your_name: "Votre nom", your_comment: "Votre commentaire (optionnel)", send_review: "Envoyer", wholesale_info: "Tarif de gros dès" },
-    en: { cart: "Cart", hero_badge: "Your Local Store", hero_title: "Welcome to Mangassouba et Fils", hero_desc: "Hardware, groceries, home appliances, and much more. Find everything you need for your daily life in the heart of Selibaby.", hero_btn1: "Discover our products", hero_btn2: "Contact us", rayons_title: "Diversity at your fingertips", rayons_desc: "Whether you are a professional, a DIY enthusiast, or simply doing your daily shopping, Mangassouba et Fils is your one-stop shop for all your needs.", rayon_quincaillerie: "Hardware", rayon_alimentation: "Groceries", rayon_divers: "Miscellaneous", categories: "Categories", products: "Our Products", latest_products: "New Arrivals", loading: "Loading...", footer_desc: "Your reference general store in the heart of Selibaby market.", rights: "All rights reserved.", admin_space: "Admin Space", your_cart: "Your Cart", total: "Total:", order_btn: "Place Order", checkout_title: "Finalize order", name: "Full Name *", phone: "Phone *", address: "Address / District *", promo: "Promo Code (Optional)", apply: "Apply", payment: "Payment Method *", cash: "Cash on delivery", momo: "Mobile Money (Sedad)", subtotal: "Subtotal:", discount: "Discount:", total_pay: "Total to pay:", confirm_btn: "Confirm order", empty_cart: "Your cart is empty.", add_to_cart: "Add to cart", no_product: "No products found.", all: "All products", nav_contact: "Contact", nav_track: "Track", nav_login: "Login", password: "Password *", register_btn: "Register", logout: "Logout", contact_title: "Contact Us", contact_desc: "We are here to answer any questions or orders.", contact_address: "Address", contact_phone: "Phone", contact_whatsapp: "WhatsApp", contact_hours: "Opening Hours", contact_hours_val: "Every day (except Friday): 08:00 AM - 06:00 PM", track_title: "Order Tracking", track_desc: "Enter the phone number used for your order.", track_btn: "Search", track_no_found: "No orders found for this number.", track_order: "Order", track_status: "Status", track_date: "Date", track_total: "Total", status_attente: "Pending", status_confirmee: "Confirmed", status_livree: "Delivered", search_placeholder: "Search for a product...", reviews_title: "Customer Reviews", leave_review: "Leave a review", your_name: "Your name", your_comment: "Your comment (optional)", send_review: "Send", wholesale_info: "Wholesale price from" },
-    ar: { cart: "السلة", hero_badge: "متجركم المحلي", hero_title: "مرحباً بكم في مانغاسوبا وأولاده", hero_desc: "أدوات، مواد غذائية، أجهزة منزلية، وأكثر من ذلك بكثير. تجدون كل ما تحتاجونه في حياتكم اليومية في قلب سيليبابي.", hero_btn1: "اكتشف منتجاتنا", hero_btn2: "اتصل بنا", rayons_title: "التنوع في متناول يدك", rayons_desc: "سواء كنتم محترفين أو مجرد متسوقين يوميين، مانغاسوبا وأولاده هو متجركم الشامل لجميع احتياجاتكم.", rayon_quincaillerie: "أدوات", rayon_alimentation: "مواد غذائية", rayon_divers: "متنوعات", categories: "الأقسام", products: "منتجاتنا", latest_products: "وصل حديثاً", loading: "جاري التحميل...", footer_desc: "متجركم العام المرجعي في قلب سوق سيليبابي.", rights: "جميع الحقوق محفوظة.", admin_space: "مساحة الإدارة", your_cart: "سلتكم", total: "المجموع:", order_btn: "إتمام الطلب", checkout_title: "إنهاء الطلب", name: "الاسم الكامل *", phone: "رقم الهاتف *", address: "العنوان / الحي *", promo: "رمز الخصم (اختياري)", apply: "تطبيق", payment: "طريقة الدفع *", cash: "الدفع عند الاستلام", momo: "مومو (Sedad)", subtotal: "المجموع الفرعي:", discount: "الخصم:", total_pay: "المجموع الإجمالي:", confirm_btn: "تأكيد الطلب", empty_cart: "سلتكم فارغة.", add_to_cart: "أضف إلى السلة", no_product: "لم يتم العثور على منتجات.", all: "جميع المنتجات", nav_contact: "اتصل بنا", nav_track: "تتبع", nav_login: "تسجيل الدخول", password: "كلمة المرور *", register_btn: "تسجيل", logout: "تسجيل الخروج", contact_title: "اتصل بنا", contact_desc: "نحن هنا للإجابة على أي أسئلة أو طلبات.", contact_address: "العنوان", contact_phone: "الهاتف", contact_whatsapp: "واتساب", contact_hours: "ساعات العمل", contact_hours_val: "كل يوم (ما عدا الجمعة): 08:00 - 18:00", track_title: "تتبع الطلب", track_desc: "أدخل رقم الهاتف المستخدم في طلبك.", track_btn: "بحث", track_no_found: "لم يتم العثور على طلبات لهذا الرقم.", track_order: "طلب", track_status: "الحالة", track_date: "التاريخ", track_total: "المجموع", status_attente: "قيد الانتظار", status_confirmee: "مؤكد", status_livree: "تم التوصيل", search_placeholder: "ابحث عن منتج...", reviews_title: "آراء العملاء", leave_review: "اترك تقييماً", your_name: "اسمك", your_comment: "تعليقك (اختياري)", send_review: "إرسال", wholesale_info: "سعر الجملة من" }
+    fr: { cart: "Panier", hero_badge: "Votre Commerce de Proximité", hero_title: "Bienvenue chez Mangassouba et Fils", hero_desc: "Quincaillerie, alimentation, électroménager, et bien plus encore. Retrouvez tout ce dont vous avez besoin au quotidien, au cœur de Sélibaby.", hero_btn1: "Découvrir nos produits", hero_btn2: "Nous contacter", rayons_title: "La diversité à portée de main", rayons_desc: "Que vous soyez un professionnel, un bricoleur ou simplement en quête de vos courses quotidiennes, Mangassouba et Fils est votre point de rendez-vous. Un seul magasin pour tous vos besoins.", rayon_quincaillerie: "Quincaillerie", rayon_alimentation: "Alimentation", rayon_divers: "Divers", categories: "Catégories", products: "Nos Produits", latest_products: "Nouveautés", loading: "Chargement...", footer_desc: "Votre commerce général de référence au cœur du marché de Sélibaby.", rights: "Tous droits réservés.", admin_space: "Espace Administrateur", your_cart: "Votre Panier", total: "Total :", order_btn: "Passer la commande", checkout_title: "Finaliser la commande", name: "Nom complet *", phone: "Téléphone *", address: "Adresse / Quartier *", promo: "Code Promo (Optionnel)", apply: "Appliquer", payment: "Mode de paiement *", cash: "Espèces à la livraison", momo: "Mobile Money (Sedad)", subtotal: "Sous-total :", discount: "Réduction :", total_pay: "Total à payer :", confirm_btn: "Confirmer la commande", empty_cart: "Votre panier est vide.", add_to_cart: "Ajouter au panier", no_product: "Aucun produit trouvé.", all: "Tous les produits", nav_contact: "Contact", nav_track: "Suivi", nav_login: "Connexion", password: "Mot de passe *", register_btn: "S'inscrire", logout: "Déconnexion", contact_title: "Contactez-nous", contact_desc: "Nous sommes à votre écoute pour toute question ou commande.", contact_address: "Adresse", contact_phone: "Téléphone", contact_whatsapp: "WhatsApp", contact_hours: "Horaires", contact_hours_val: "Tous les jours (sauf vendredi) : 08h00 - 18h00", track_title: "Suivi de commande", track_desc: "Entrez le numéro de téléphone utilisé lors de votre commande.", track_btn: "Rechercher", track_no_found: "Aucune commande trouvée pour ce numéro.", track_order: "Commande", track_status: "Statut", track_date: "Date", track_total: "Total", status_attente: "En attente", status_confirmee: "Confirmée", status_livree: "Livrée", status_annulee: "Annulée", out_of_stock: "Rupture de stock", search_placeholder: "Rechercher un produit...", reviews_title: "Avis Clients", leave_review: "Laisser un avis", your_name: "Votre nom", your_comment: "Votre commentaire (optionnel)", send_review: "Envoyer", wholesale_info: "Tarif de gros dès" },
+    en: { cart: "Cart", hero_badge: "Your Local Store", hero_title: "Welcome to Mangassouba et Fils", hero_desc: "Hardware, groceries, home appliances, and much more. Find everything you need for your daily life in the heart of Selibaby.", hero_btn1: "Discover our products", hero_btn2: "Contact us", rayons_title: "Diversity at your fingertips", rayons_desc: "Whether you are a professional, a DIY enthusiast, or simply doing your daily shopping, Mangassouba et Fils is your one-stop shop for all your needs.", rayon_quincaillerie: "Hardware", rayon_alimentation: "Groceries", rayon_divers: "Miscellaneous", categories: "Categories", products: "Our Products", latest_products: "New Arrivals", loading: "Loading...", footer_desc: "Your reference general store in the heart of Selibaby market.", rights: "All rights reserved.", admin_space: "Admin Space", your_cart: "Your Cart", total: "Total:", order_btn: "Place Order", checkout_title: "Finalize order", name: "Full Name *", phone: "Phone *", address: "Address / District *", promo: "Promo Code (Optional)", apply: "Apply", payment: "Payment Method *", cash: "Cash on delivery", momo: "Mobile Money (Sedad)", subtotal: "Subtotal:", discount: "Discount:", total_pay: "Total to pay:", confirm_btn: "Confirm order", empty_cart: "Your cart is empty.", add_to_cart: "Add to cart", no_product: "No products found.", all: "All products", nav_contact: "Contact", nav_track: "Track", nav_login: "Login", password: "Password *", register_btn: "Register", logout: "Logout", contact_title: "Contact Us", contact_desc: "We are here to answer any questions or orders.", contact_address: "Address", contact_phone: "Phone", contact_whatsapp: "WhatsApp", contact_hours: "Opening Hours", contact_hours_val: "Every day (except Friday): 08:00 AM - 06:00 PM", track_title: "Order Tracking", track_desc: "Enter the phone number used for your order.", track_btn: "Search", track_no_found: "No orders found for this number.", track_order: "Order", track_status: "Status", track_date: "Date", track_total: "Total", status_attente: "Pending", status_confirmee: "Confirmed", status_livree: "Delivered", status_annulee: "Cancelled", out_of_stock: "Out of stock", search_placeholder: "Search for a product...", reviews_title: "Customer Reviews", leave_review: "Leave a review", your_name: "Your name", your_comment: "Your comment (optional)", send_review: "Send", wholesale_info: "Wholesale price from" },
+    ar: { cart: "السلة", hero_badge: "متجركم المحلي", hero_title: "مرحباً بكم في مانغاسوبا وأولاده", hero_desc: "أدوات، مواد غذائية، أجهزة منزلية، وأكثر من ذلك بكثير. تجدون كل ما تحتاجونه في حياتكم اليومية في قلب سيليبابي.", hero_btn1: "اكتشف منتجاتنا", hero_btn2: "اتصل بنا", rayons_title: "التنوع في متناول يدك", rayons_desc: "سواء كنتم محترفين أو مجرد متسوقين يوميين، مانغاسوبا وأولاده هو متجركم الشامل لجميع احتياجاتكم.", rayon_quincaillerie: "أدوات", rayon_alimentation: "مواد غذائية", rayon_divers: "متنوعات", categories: "الأقسام", products: "منتجاتنا", latest_products: "وصل حديثاً", loading: "جاري التحميل...", footer_desc: "متجركم العام المرجعي في قلب سوق سيليبابي.", rights: "جميع الحقوق محفوظة.", admin_space: "مساحة الإدارة", your_cart: "سلتكم", total: "المجموع:", order_btn: "إتمام الطلب", checkout_title: "إنهاء الطلب", name: "الاسم الكامل *", phone: "رقم الهاتف *", address: "العنوان / الحي *", promo: "رمز الخصم (اختياري)", apply: "تطبيق", payment: "طريقة الدفع *", cash: "الدفع عند الاستلام", momo: "مومو (Sedad)", subtotal: "المجموع الفرعي:", discount: "الخصم:", total_pay: "المجموع الإجمالي:", confirm_btn: "تأكيد الطلب", empty_cart: "سلتكم فارغة.", add_to_cart: "أضف إلى السلة", no_product: "لم يتم العثور على منتجات.", all: "جميع المنتجات", nav_contact: "اتصل بنا", nav_track: "تتبع", nav_login: "تسجيل الدخول", password: "كلمة المرور *", register_btn: "تسجيل", logout: "تسجيل الخروج", contact_title: "اتصل بنا", contact_desc: "نحن هنا للإجابة على أي أسئلة أو طلبات.", contact_address: "العنوان", contact_phone: "الهاتف", contact_whatsapp: "واتساب", contact_hours: "ساعات العمل", contact_hours_val: "كل يوم (ما عدا الجمعة): 08:00 - 18:00", track_title: "تتبع الطلب", track_desc: "أدخل رقم الهاتف المستخدم في طلبك.", track_btn: "بحث", track_no_found: "لم يتم العثور على طلبات لهذا الرقم.", track_order: "طلب", track_status: "الحالة", track_date: "التاريخ", track_total: "المجموع", status_attente: "قيد الانتظار", status_confirmee: "مؤكد", status_livree: "تم التوصيل", status_annulee: "ملغى", out_of_stock: "نفدت الكمية", search_placeholder: "ابحث عن منتج...", reviews_title: "آراء العملاء", leave_review: "اترك تقييماً", your_name: "اسمك", your_comment: "تعليقك (اختياري)", send_review: "إرسال", wholesale_info: "سعر الجملة من" }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    const anneeEl = document.getElementById('annee-copyright'); if (anneeEl) anneeEl.innerText = new Date().getFullYear();
     appliquerLangue(langueActuelle);
     mettreAJourPanierUI();
     verifierSessionClient();
@@ -82,10 +100,11 @@ async function chargerCarrousel() {
         banners.forEach(b => {
             const div = document.createElement('div');
             div.className = 'carrousel-item';
-            div.onclick = () => { if (b.link_url) window.location.href = b.link_url; else window.location.href = '#produits'; };
+            const lien = safeUrl(b.link_url);
+            div.onclick = () => { window.location.href = lien || '#produits'; };
             div.innerHTML = `
-                <img src="${b.image_url}" alt="${b.title}">
-                <div class="carrousel-content"><h3>${b.title}</h3><p>${b.description || ''}</p></div>`;
+                <img src="${esc(safeUrl(b.image_url) || IMG_VIDE)}" alt="${esc(b.title)}" loading="lazy">
+                <div class="carrousel-content"><h3>${esc(b.title)}</h3><p>${esc(b.description || '')}</p></div>`;
             conteneur.appendChild(div);
         });
 
@@ -115,10 +134,10 @@ async function chargerCategories() {
         parents.forEach(parent => {
             let enfants = toutesLesCategories.filter(c => c.parent_id === parent.id);
             let hasChildren = enfants.length > 0;
-            html += `<div class="category-item"><div class="category-header" onclick="toggleCategory(this, ${parent.id})"><span>${getNomCat(parent)}</span>${hasChildren ? '<span class="category-arrow">▼</span>' : ''}</div>`;
+            html += `<div class="category-item"><div class="category-header" onclick="toggleCategory(this, ${Number(parent.id)})"><span>${esc(getNomCat(parent))}</span>${hasChildren ? '<span class="category-arrow">▼</span>' : ''}</div>`;
             if (hasChildren) {
-                html += `<div class="subcategory-list" id="subcat-${parent.id}"><div class="subcategory-list-inner">`;
-                enfants.forEach(enfant => { html += `<div class="sub-cat-link" onclick="filtrerCategorie(${enfant.id}, this)">${getNomCat(enfant)}</div>`; });
+                html += `<div class="subcategory-list" id="subcat-${Number(parent.id)}"><div class="subcategory-list-inner">`;
+                enfants.forEach(enfant => { html += `<div class="sub-cat-link" onclick="filtrerCategorie(${Number(enfant.id)}, this)">${esc(getNomCat(enfant))}</div>`; });
                 html += `</div></div>`;
             }
             html += `</div>`;
@@ -202,7 +221,7 @@ function afficherProduits(produits) {
         const carte = document.createElement('div'); 
         carte.className = 'carte-produit';
         carte.onclick = (e) => { if(e.target.tagName !== 'BUTTON') ouvrirLightbox(produit.id); };
-        const imageUrl = produit.media ? produit.media : 'https://via.placeholder.com/250x200?text=Pas+d\'image';
+        const imageUrl = safeUrl(produit.media) || IMG_VIDE;
         const prixFormatte = new Intl.NumberFormat(langueActuelle === 'ar' ? 'ar-MR' : (langueActuelle === 'en' ? 'en-US' : 'fr-FR')).format(produit.prix);
         const nomAffiche = getNomProduit(produit);
         let nomCategorie = produit.categorie_nom || 'Divers';
@@ -212,17 +231,20 @@ function afficherProduits(produits) {
         let badgeGros = '';
         if (produit.prix_gros > 0) {
             const pGros = new Intl.NumberFormat('fr-FR').format(produit.prix_gros);
-            badgeGros = `<div style="background:#e8f5e9; color:var(--vert); padding:4px 8px; border-radius:4px; font-size:12px; margin-bottom:8px; font-weight:bold;">${traductions[langueActuelle].wholesale_info} ${produit.seuil_gros} : ${pGros} MRU</div>`;
+            badgeGros = `<div style="background:#e8f5e9; color:var(--vert); padding:4px 8px; border-radius:4px; font-size:12px; margin-bottom:8px; font-weight:bold;">${traductions[langueActuelle].wholesale_info} ${Number(produit.seuil_gros)} : ${pGros} MRU</div>`;
         }
 
+        const dispo = produit.disponible !== false;
         carte.innerHTML = `
-            <img src="${imageUrl}" alt="${nomAffiche}">
+            <img src="${esc(imageUrl)}" alt="${esc(nomAffiche)}" loading="lazy">
             <div class="info-produit">
-                <p class="categorie">${nomCategorie}</p>
-                <h3>${nomAffiche}</h3>
+                <p class="categorie">${esc(nomCategorie)}</p>
+                <h3>${esc(nomAffiche)}</h3>
                 ${badgeGros}
                 <p class="prix">${prixFormatte} MRU</p>
-                <button class="btn-ajouter" onclick="ajouterAuPanier(${produit.id}, '${nomAffiche.replace(/'/g, "\\'")}', ${produit.prix}, '${imageUrl}', ${produit.prix_gros || 0}, ${produit.seuil_gros || 10})">${traductions[langueActuelle].add_to_cart}</button>
+                ${dispo
+                    ? `<button class="btn-ajouter" onclick="ajouterAuPanierParId(${Number(produit.id)})">${traductions[langueActuelle].add_to_cart}</button>`
+                    : `<button class="btn-ajouter" disabled style="opacity:.6; cursor:not-allowed;">${traductions[langueActuelle].out_of_stock}</button>`}
             </div>`;
         conteneur.appendChild(carte);
     });
@@ -298,11 +320,10 @@ async function chargerProfilClient() {
         if(data.orders.length === 0) { conteneur.innerHTML = '<p style="font-size:13px; color:#777;">Aucune commande pour le moment.</p>'; return; }
         data.orders.forEach(o => {
             const date = new Date(o.created_at).toLocaleDateString('fr-FR');
-            let statusColor = o.status === 'livrée' ? 'var(--vert)' : (o.status === 'confirmée' ? '#004085' : '#856404');
-            let statusBg = o.status === 'livrée' ? '#d4edda' : (o.status === 'confirmée' ? '#cce5ff' : '#fff3cd');
+            const [statusColor, statusBg] = STYLES_STATUT[o.status] || ['#856404', '#fff3cd'];
             let statusTxt = traductions[langueActuelle]['status_'+o.status.replace('é','e')] || o.status;
             const div = document.createElement('div'); div.className = 'commande-profil-item';
-            div.innerHTML = `<div><h4>Commande #${o.id}</h4><p>${date} - ${new Intl.NumberFormat('fr-FR').format(o.total)} MRU</p></div><span class="status-badge" style="color:${statusColor}; background:${statusBg};">${statusTxt}</span>`;
+            div.innerHTML = `<div><h4>Commande #${Number(o.id)}</h4><p>${esc(date)} - ${new Intl.NumberFormat('fr-FR').format(o.total)} MRU</p></div><span class="status-badge" style="color:${statusColor}; background:${statusBg};">${esc(statusTxt)}</span>`;
             conteneur.appendChild(div);
         });
     } catch (e) { console.error(e); }
@@ -311,10 +332,10 @@ async function chargerProfilClient() {
 async function ouvrirLightbox(id) {
     produitLightbox = tousLesProduits.find(p => p.id === id);
     if(!produitLightbox) return;
-    document.getElementById('lb-image').src = produitLightbox.media || 'https://via.placeholder.com/400x400';
+    document.getElementById('lb-image').src = safeUrl(produitLightbox.media) || IMG_VIDE;
     document.getElementById('lb-image').style.display = 'block';
     const videoEl = document.getElementById('lb-video'); const btnPlay = document.getElementById('btn-play-video');
-    if (produitLightbox.video) { videoEl.src = produitLightbox.video; btnPlay.style.display = 'block'; videoEl.style.display = 'none'; } 
+    if (safeUrl(produitLightbox.video)) { videoEl.src = safeUrl(produitLightbox.video); btnPlay.style.display = 'block'; videoEl.style.display = 'none'; } 
     else { btnPlay.style.display = 'none'; videoEl.style.display = 'none'; videoEl.src = ''; }
     document.getElementById('lb-nom').innerText = getNomProduit(produitLightbox);
     document.getElementById('lb-desc').innerText = getDescProduit(produitLightbox) || 'Aucune description.';
@@ -323,7 +344,9 @@ async function ouvrirLightbox(id) {
     if (langueActuelle === 'en' && produitLightbox.categorie_nom_en) nomCategorie = produitLightbox.categorie_nom_en;
     if (langueActuelle === 'ar' && produitLightbox.categorie_nom_ar) nomCategorie = produitLightbox.categorie_nom_ar;
     document.getElementById('lb-categorie').innerText = nomCategorie;
-    document.getElementById('lb-btn-ajouter').innerText = traductions[langueActuelle].add_to_cart;
+    const btnLb = document.getElementById('lb-btn-ajouter');
+    btnLb.disabled = produitLightbox.disponible === false;
+    btnLb.innerText = btnLb.disabled ? traductions[langueActuelle].out_of_stock : traductions[langueActuelle].add_to_cart;
     noteActuelle = 5;
     document.querySelectorAll('#etoiles-input span').forEach((s, i) => { if(i < 5) s.classList.add('active'); });
     document.getElementById('form-avis').reset();
@@ -348,8 +371,8 @@ async function chargerAvis(productId) {
         if (!Array.isArray(avis) || avis.length === 0) { conteneur.innerHTML = `<p style="font-size:13px; color:#777;">Aucun avis.</p>`; return; }
         avis.forEach(a => {
             const div = document.createElement('div'); div.className = 'avis-item';
-            const etoiles = '★'.repeat(a.rating) + '☆'.repeat(5 - a.rating);
-            div.innerHTML = `<div class="avis-header"><strong>${a.client_name}</strong> <span class="avis-etoiles">${etoiles}</span></div><p class="avis-comment">${a.comment || ''}</p>`;
+            const note = Math.min(5, Math.max(0, parseInt(a.rating) || 0)); const etoiles = '★'.repeat(note) + '☆'.repeat(5 - note);
+            div.innerHTML = `<div class="avis-header"><strong>${esc(a.client_name)}</strong> <span class="avis-etoiles">${etoiles}</span></div><p class="avis-comment">${esc(a.comment || '')}</p>`;
             conteneur.appendChild(div);
         });
     } catch (err) { conteneur.innerHTML = 'Erreur.'; }
@@ -363,7 +386,7 @@ async function soumettreAvis(event) {
     const btn = event.target.querySelector('button[type="submit"]'); btn.disabled = true; btn.innerText = "...";
     try {
         const reponse = await fetch(`${API_URL}/reviews`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: produitLightbox.id, client_name: nom, rating: noteActuelle, comment }) });
-        if (reponse.ok) { document.getElementById('form-avis').reset(); chargerAvis(produitLightbox.id); }
+        if (reponse.ok) { document.getElementById('form-avis').reset(); chargerAvis(produitLightbox.id); } else { const d = await reponse.json(); alert(d.message || 'Erreur.'); }
     } catch (err) { alert("Erreur serveur."); } finally { btn.disabled = false; btn.innerText = traductions[langueActuelle].send_review; }
 }
 
@@ -375,16 +398,17 @@ async function rechercherCommande() {
     if (!phone) return alert("Veuillez entrer un numéro.");
     conteneur.innerHTML = `<p style="text-align:center;">...</p>`;
     try {
-        const reponse = await fetch(`${API_URL}/orders/track/${phone}`); const commandes = await reponse.json(); conteneur.innerHTML = '';
+        const reponse = await fetch(`${API_URL}/orders/track/${encodeURIComponent(phone.trim())}`); const commandes = await reponse.json(); conteneur.innerHTML = '';
+        if (!reponse.ok) { conteneur.innerHTML = `<p style="color:red; text-align:center;">${esc(commandes.message || 'Erreur.')}</p>`; return; }
         if (!Array.isArray(commandes) || commandes.length === 0) { conteneur.innerHTML = `<p style="color:red; text-align:center;">${traductions[langueActuelle].track_no_found}</p>`; return; }
         commandes.forEach(cmd => {
             const date = new Date(cmd.created_at).toLocaleDateString('fr-FR');
-            let statusClass = cmd.status === 'livrée' ? 'status-livree' : (cmd.status === 'confirmée' ? 'status-confirmee' : 'status-attente');
+            let statusClass = { 'livrée': 'status-livree', 'confirmée': 'status-confirmee', 'annulée': 'status-annulee' }[cmd.status] || 'status-attente';
             let statusText = traductions[langueActuelle]['status_'+cmd.status.replace('é','e')] || cmd.status;
             let itemsHtml = '<ul>'; const itemsArray = typeof cmd.items === 'string' ? JSON.parse(cmd.items) : cmd.items;
-            itemsArray.forEach(item => { itemsHtml += `<li>${item.qty}x ${item.nom}</li>`; }); itemsHtml += '</ul>';
+            itemsArray.forEach(item => { itemsHtml += `<li>${Number(item.qty)}x ${esc(item.nom)}</li>`; }); itemsHtml += '</ul>';
             const div = document.createElement('div'); div.className = 'suivi-card';
-            div.innerHTML = `<div class="suivi-header"><h4>Commande #${cmd.id}</h4><span class="suivi-status ${statusClass}">${statusText}</span></div><div class="suivi-details"><p><strong>Date :</strong> ${date}</p><p><strong>Total :</strong> ${new Intl.NumberFormat('fr-FR').format(cmd.total)} MRU</p><div style="margin-top: 10px;">${itemsHtml}</div></div>`;
+            div.innerHTML = `<div class="suivi-header"><h4>Commande #${Number(cmd.id)}</h4><span class="suivi-status ${statusClass}">${esc(statusText)}</span></div><div class="suivi-details"><p><strong>Date :</strong> ${date}</p><p><strong>Total :</strong> ${new Intl.NumberFormat('fr-FR').format(cmd.total)} MRU</p><div style="margin-top: 10px;">${itemsHtml}</div></div>`;
             conteneur.appendChild(div);
         });
     } catch (err) { conteneur.innerHTML = `<p style="color:red; text-align:center;">Erreur serveur.</p>`; }
@@ -394,6 +418,11 @@ function ajouterAuPanier(id, nom, prix, image, prix_gros, seuil_gros) {
     const itemExistant = monPanier.find(item => item.id === id); 
     if (itemExistant) itemExistant.qty += 1; else monPanier.push({ id, nom, prix, image, prix_gros, seuil_gros, qty: 1 }); 
     sauvegarderPanier(); ouvrirPanier(); 
+}
+
+function ajouterAuPanierParId(id) {
+    const p = tousLesProduits.find(x => x.id === id);
+    if (p) ajouterAuPanier(p.id, getNomProduit(p), p.prix, safeUrl(p.media) || IMG_VIDE, p.prix_gros || 0, p.seuil_gros || 10);
 }
 
 function modifierQuantite(id, changement) { const item = monPanier.find(item => item.id === id); if (item) { item.qty += changement; if (item.qty <= 0) monPanier = monPanier.filter(i => i.id !== id); sauvegarderPanier(); } }
@@ -412,7 +441,7 @@ function mettreAJourPanierUI() {
             const div = document.createElement('div'); div.className = 'item-panier';
             const prixFormatte = new Intl.NumberFormat(langueActuelle === 'ar' ? 'ar-MR' : (langueActuelle === 'en' ? 'en-US' : 'fr-FR')).format(prixUnitaire);
             const badgeGros = isGros ? `<span style="font-size:10px; background:var(--vert); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">Prix de gros</span>` : '';
-            div.innerHTML = `<img src="${item.image}"><div class="item-details"><h4>${item.nom} ${badgeGros}</h4><p class="prix-item">${prixFormatte} MRU</p><div class="item-actions"><button onclick="modifierQuantite(${item.id}, -1)">-</button><span>${item.qty}</span><button onclick="modifierQuantite(${item.id}, 1)">+</button><button class="btn-supprimer" onclick="supprimerDuPanier(${item.id})">X</button></div></div>`;
+            div.innerHTML = `<img src="${esc(safeUrl(item.image) || IMG_VIDE)}" alt=""><div class="item-details"><h4>${esc(item.nom)} ${badgeGros}</h4><p class="prix-item">${prixFormatte} MRU</p><div class="item-actions"><button onclick="modifierQuantite(${Number(item.id)}, -1)">-</button><span>${Number(item.qty)}</span><button onclick="modifierQuantite(${Number(item.id)}, 1)">+</button><button class="btn-supprimer" onclick="supprimerDuPanier(${Number(item.id)})">X</button></div></div>`;
             conteneur.appendChild(div);
         });
     }
@@ -432,7 +461,7 @@ function calculerTotal() {
         if (item.prix_gros > 0 && item.qty >= item.seuil_gros) prixUnitaire = item.prix_gros;
         return acc + (prixUnitaire * item.qty);
     }, 0);
-    let reduction = promoAppliquee ? (sousTotal * promoAppliquee.discount_percent) / 100 : 0;
+    let reduction = promoAppliquee ? Math.round((sousTotal * promoAppliquee.discount_percent) / 100) : 0;
     const formatter = new Intl.NumberFormat(langueActuelle === 'ar' ? 'ar-MR' : (langueActuelle === 'en' ? 'en-US' : 'fr-FR'));
     document.getElementById('checkout-sous-total').innerText = formatter.format(sousTotal);
     document.getElementById('checkout-total').innerText = formatter.format(sousTotal - reduction);
@@ -453,28 +482,22 @@ async function verifierPromo() {
 async function envoyerCommande(event) {
     event.preventDefault();
     const btn = event.target.querySelector('button[type="submit"]'); btn.innerText = "..."; btn.disabled = true;
-    let sousTotal = 0;
-    const itemsToOrder = monPanier.map(item => {
-        let appliedPrice = item.prix;
-        if (item.prix_gros > 0 && item.qty >= item.seuil_gros) appliedPrice = item.prix_gros;
-        sousTotal += appliedPrice * item.qty;
-        return { id: item.id, nom: item.nom, prix: appliedPrice, qty: item.qty };
-    });
-    const reduction = promoAppliquee ? (sousTotal * promoAppliquee.discount_percent) / 100 : 0;
-    const commandeData = { 
-        clientName: document.getElementById('clientName').value, 
-        phone: document.getElementById('phone').value, 
-        address: document.getElementById('address').value, 
-        items: itemsToOrder, 
-        payment: document.getElementById('payment').value, 
-        delivery_zone: "Retrait en boutique", delivery_fee: 0, 
-        promo_code: promoAppliquee ? promoAppliquee.code : null, 
-        discount_amount: reduction, total: sousTotal - reduction 
+    // Le navigateur n'envoie QUE les identifiants et quantités : prix, remise et total sont recalculés par le serveur.
+    const commandeData = {
+        clientName: document.getElementById('clientName').value,
+        phone: document.getElementById('phone').value,
+        address: document.getElementById('address').value,
+        items: monPanier.map(item => ({ id: item.id, qty: item.qty })),
+        payment: document.getElementById('payment').value,
+        delivery_zone: "Retrait en boutique",
+        promo_code: promoAppliquee ? promoAppliquee.code : null
     };
+    const entetes = { 'Content-Type': 'application/json' };
+    if (tokenClient) entetes['Authorization'] = `Bearer ${tokenClient}`; // pour recevoir les points fidélité
     try {
-        const reponse = await fetch(`${API_URL}/orders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(commandeData) });
+        const reponse = await fetch(`${API_URL}/orders`, { method: 'POST', headers: entetes, body: JSON.stringify(commandeData) });
         const data = await reponse.json();
-        if (reponse.ok) { alert(`✅ Commande confirmée ! Numéro : #${data.order.id}`); monPanier = []; promoAppliquee = null; sauvegarderPanier(); fermerCheckout(); if(tokenClient) verifierSessionClient(); }
+        if (reponse.ok) { alert(`✅ Commande confirmée ! Numéro : #${data.order.id} — Total : ${new Intl.NumberFormat('fr-FR').format(data.order.total)} MRU`); monPanier = []; promoAppliquee = null; sauvegarderPanier(); fermerCheckout(); if(tokenClient) verifierSessionClient(); }
         else alert("Erreur : " + data.message);
     } catch (erreur) { alert("Erreur de connexion."); } finally { btn.innerText = traductions[langueActuelle].confirm_btn; btn.disabled = false; }
 }
@@ -485,22 +508,26 @@ function toggleChatIA() {
     win.style.display = win.style.display === 'none' ? 'flex' : 'none';
 }
 
+function ajouterMessageIA(texte, role) {
+    const conteneur = document.getElementById('ai-chat-messages');
+    const bulle = document.createElement('div');
+    bulle.textContent = texte; // textContent : jamais interprété comme du HTML
+    bulle.style.cssText = role === 'client'
+        ? 'background: var(--bleu-nuit); color: white; padding: 10px; border-radius: 8px; align-self: flex-end; max-width: 80%; white-space: pre-wrap;'
+        : 'background: #e8f5e9; padding: 10px; border-radius: 8px; align-self: flex-start; max-width: 80%; white-space: pre-wrap;';
+    conteneur.appendChild(bulle);
+    conteneur.scrollTop = conteneur.scrollHeight;
+    return bulle;
+}
+
 async function envoyerMessageIA() {
     const input = document.getElementById('ai-chat-input');
-    const message = input.value.trim();
+    const message = input.value.trim().slice(0, 500);
     if (!message) return;
 
-    const messagesContainer = document.getElementById('ai-chat-messages');
-    
-    // Afficher le message du client
-    messagesContainer.innerHTML += `<div style="background: var(--bleu-nuit); color: white; padding: 10px; border-radius: 8px; align-self: flex-end; max-width: 80%;">${message}</div>`;
+    ajouterMessageIA(message, 'client');
     input.value = '';
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-    // Afficher "L'assistant écrit..."
-    const loadingId = 'loading-' + Date.now();
-    messagesContainer.innerHTML += `<div id="${loadingId}" style="background: #e8f5e9; padding: 10px; border-radius: 8px; align-self: flex-start;">...</div>`;
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    const attente = ajouterMessageIA('...', 'assistant');
 
     try {
         const rep = await fetch(`${API_URL}/ai/chat`, {
@@ -509,11 +536,9 @@ async function envoyerMessageIA() {
             body: JSON.stringify({ message })
         });
         const data = await rep.json();
-        
-        document.getElementById(loadingId).remove();
-        messagesContainer.innerHTML += `<div style="background: #e8f5e9; padding: 10px; border-radius: 8px; align-self: flex-start; max-width: 80%;">${data.response}</div>`;
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        attente.textContent = data.response || data.message || "Désolé, je n'ai pas de réponse.";
     } catch (e) {
-        document.getElementById(loadingId).innerText = "Désolé, je suis hors ligne.";
+        attente.textContent = "Désolé, je suis hors ligne.";
     }
+    document.getElementById('ai-chat-messages').scrollTop = document.getElementById('ai-chat-messages').scrollHeight;
 }

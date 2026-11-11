@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Mangassouba et Fils</title>
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://res.cloudinary.com https://images.unsplash.com; media-src https://res.cloudinary.com; connect-src 'self' https://mangassouba-site.onrender.com http://localhost:3000; object-src 'none'; base-uri 'self'; form-action 'self'">
     <link rel="stylesheet" href="css/admin.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
 </head>
@@ -11,7 +14,7 @@
 
     <div id="login-screen">
         <div class="login-box">
-            <img src="images/logo.png" alt="Logo">
+            <img src="images/logo.png" alt="Mangassouba et Fils">
             <h2>Espace Administrateur</h2>
             <div id="login-error">Email ou mot de passe incorrect.</div>
             <form onsubmit="seConnecter(event)">
@@ -26,7 +29,7 @@
         <div class="layout">
             <aside class="sidebar">
                 <div class="sidebar-logo">
-                    <img src="images/logo.png" alt="Logo">
+                    <img src="images/logo.png" alt="Mangassouba et Fils">
                     <h2>Admin</h2>
                 </div>
                 <ul class="sidebar-menu">
@@ -78,6 +81,7 @@
                         <div class="stat-card" style="border-left-color: red;"><h3>Total Dépenses</h3><p id="fin-depenses">0 MRU</p></div>
                         <div class="stat-card" style="border-left-color: var(--or);"><h3>Valeur du Stock</h3><p id="fin-stock">0 MRU</p></div>
                         <div class="stat-card" style="border-left-color: #004085;"><h3>Bénéfice Estimé</h3><p id="fin-benefice">0 MRU</p></div>
+                        <div class="stat-card" style="border-left-color: #6f42c1;"><h3>Marge brute (ventes livrées)</h3><p id="fin-marge">0 MRU</p></div>
                     </div>
                     <div style="display: flex; gap: 30px; flex-wrap: wrap;">
                         <div style="flex: 1; min-width: 300px;">
@@ -187,6 +191,7 @@
                         <option value="en attente">En attente</option>
                         <option value="confirmée">Confirmée</option>
                         <option value="livrée">Livrée</option>
+                        <option value="annulée">Annulée (remet le stock)</option>
                     </select>
                 </div>
             </div>

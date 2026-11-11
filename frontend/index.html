@@ -3,7 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mangassouba et Fils - Commerce Général</title>
+    <title>Mangassouba et Fils - Commerce Général à Sélibaby</title>
+    <meta name="description" content="Mangassouba et Fils, commerce général à Sélibaby (Mauritanie) : quincaillerie, alimentation, électroménager et plus. Commandez en ligne, retirez en boutique.">
+    <meta name="theme-color" content="#0A1C3F">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="fr_FR">
+    <meta property="og:title" content="Mangassouba et Fils - Commerce Général à Sélibaby">
+    <meta property="og:description" content="Quincaillerie, alimentation, électroménager et plus. Commandez en ligne, retirez en boutique.">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <!-- Content-Security-Policy : limite les domaines que la page peut contacter.
+         Si vous changez l'adresse de l'API ou l'hébergeur des images, mettez-la à jour ici. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://res.cloudinary.com https://images.unsplash.com; media-src https://res.cloudinary.com; connect-src 'self' https://mangassouba-site.onrender.com http://localhost:3000; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"Store","name":"Mangassouba et Fils",
+     "description":"Commerce général à Sélibaby : quincaillerie, alimentation, électroménager et divers.",
+     "telephone":"+22246432253",
+     "address":{"@type":"PostalAddress","streetAddress":"Marché centre-ville","addressLocality":"Sélibaby","addressCountry":"MR"},
+     "openingHours":["Mo-Th 08:00-18:00","Sa-Su 08:00-18:00"]}
+    </script>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
 </head>
@@ -12,7 +32,7 @@
     <!-- EN-TÊTE -->
     <header>
         <div class="logo-container">
-            <img src="images/logo.png" alt="Logo" class="logo">
+            <img src="images/logo.png" alt="Mangassouba et Fils" class="logo" width="150" height="100">
             <h1>Mangassouba et Fils</h1>
         </div>
         <div class="header-right">
@@ -87,7 +107,7 @@
             <div class="titre-section" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                 <h2 id="titre-section-produits" data-i18n="latest_products">Nouveautés</h2>
                 <div class="search-container">
-                    <input type="text" id="search-input" placeholder="Rechercher un produit..." oninput="rechercherProduits()">
+                    <input type="text" id="search-input" aria-label="Rechercher un produit" placeholder="Rechercher un produit..." oninput="rechercherProduits()">
                     <span class="search-icon">🔍</span>
                 </div>
             </div>
@@ -117,7 +137,7 @@
             <div class="contact-card">
                 <div class="icon">💬</div>
                 <h3 data-i18n="contact_whatsapp">WhatsApp</h3>
-                <p><a href="https://wa.me/22246432253" target="_blank">+222 46 43 22 53</a></p>
+                <p><a href="https://wa.me/22246432253" target="_blank" rel="noopener noreferrer">+222 46 43 22 53</a></p>
             </div>
             <div class="contact-card">
                 <div class="icon">🕒</div>
@@ -135,7 +155,7 @@
             <p>📞 00222 46 43 22 53 / 00222 42 43 22 53</p>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2024 Mangassouba et Fils. <span data-i18n="rights">Tous droits réservés.</span></p>
+            <p>&copy; <span id="annee-copyright">2026</span> Mangassouba et Fils. <span data-i18n="rights">Tous droits réservés.</span></p>
             <p style="margin-top: 10px;">
                 <a href="admin.html" style="color: #8899a6; text-decoration: none; font-size: 12px;" data-i18n="admin_space">Espace Administrateur</a>
             </p>
@@ -145,20 +165,20 @@
     <!-- MODALE AUTH CLIENT -->
     <div id="client-modal" class="modal">
         <div class="modal-content">
-            <span class="close-btn" onclick="fermerClient()">&times;</span>
+            <span class="close-btn" role="button" aria-label="Fermer" onclick="fermerClient()">&times;</span>
             <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
                 <button onclick="changerOngletClient('login')" id="tab-login-btn" class="btn-small" style="flex:1; background:var(--bleu-nuit); color:white;">Connexion</button>
                 <button onclick="changerOngletClient('register')" id="tab-register-btn" class="btn-small" style="flex:1; background:#eee; color:#333;">Inscription</button>
             </div>
             <form id="form-client-login" onsubmit="connecterClient(event)">
                 <div class="form-group"><label data-i18n="phone">Téléphone *</label><input type="tel" id="login-phone" required></div>
-                <div class="form-group"><label data-i18n="password">Mot de passe *</label><input type="password" id="login-password" required></div>
+                <div class="form-group"><label data-i18n="password">Mot de passe *</label><input type="password" id="login-password" required autocomplete="current-password"></div>
                 <button type="submit" class="btn-submit" data-i18n="nav_login">Se connecter</button>
             </form>
             <form id="form-client-register" onsubmit="inscrireClient(event)" style="display:none;">
                 <div class="form-group"><label data-i18n="name">Nom complet *</label><input type="text" id="register-name" required></div>
                 <div class="form-group"><label data-i18n="phone">Téléphone *</label><input type="tel" id="register-phone" required></div>
-                <div class="form-group"><label data-i18n="password">Mot de passe *</label><input type="password" id="register-password" required></div>
+                <div class="form-group"><label data-i18n="password">Mot de passe *</label><input type="password" id="register-password" required minlength="8" autocomplete="new-password" placeholder="8 caractères minimum"></div>
                 <button type="submit" class="btn-submit" data-i18n="register_btn">S'inscrire</button>
             </form>
         </div>
@@ -167,7 +187,7 @@
     <!-- MODALE PROFIL CLIENT -->
     <div id="profil-modal" class="modal">
         <div class="modal-content" style="max-width: 600px;">
-            <span class="close-btn" onclick="fermerProfil()">&times;</span>
+            <span class="close-btn" role="button" aria-label="Fermer" onclick="fermerProfil()">&times;</span>
             <h2>Mon Profil</h2>
             <div style="background: var(--fond); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                 <p><strong>Nom :</strong> <span id="profil-nom"></span></p>
@@ -183,7 +203,7 @@
     <!-- MODALE LIGHTBOX PRODUIT -->
     <div id="lightbox-modal" class="modal">
         <div class="modal-content lightbox-content">
-            <span class="close-btn" onclick="fermerLightbox()">&times;</span>
+            <span class="close-btn" role="button" aria-label="Fermer" onclick="fermerLightbox()">&times;</span>
             <div class="lightbox-body">
                 <div class="lightbox-image" style="position: relative;">
                     <img id="lb-image" src="" alt="Produit">
@@ -232,11 +252,11 @@
     <!-- CHECKOUT -->
     <div id="checkout-modal" class="modal">
         <div class="modal-content">
-            <span class="close-btn" onclick="fermerCheckout()">&times;</span>
+            <span class="close-btn" role="button" aria-label="Fermer" onclick="fermerCheckout()">&times;</span>
             <h2 data-i18n="checkout_title">Finaliser la commande</h2>
             <form id="form-commande" onsubmit="envoyerCommande(event)">
-                <div class="form-group"><label data-i18n="name">Nom complet *</label><input type="text" id="clientName" required></div>
-                <div class="form-group"><label data-i18n="phone">Téléphone *</label><input type="tel" id="phone" required placeholder="Ex: 46432253"></div>
+                <div class="form-group"><label data-i18n="name">Nom complet *</label><input type="text" id="clientName" required maxlength="150" autocomplete="name"></div>
+                <div class="form-group"><label data-i18n="phone">Téléphone *</label><input type="tel" id="phone" required inputmode="tel" autocomplete="tel" placeholder="Ex: 46432253"></div>
                 <div class="form-group"><label data-i18n="address">Adresse / Quartier *</label><input type="text" id="address" required></div>
                 <div class="form-group">
                     <label data-i18n="promo">Code Promo (Optionnel)</label>
@@ -262,7 +282,7 @@
     <!-- MODALE SUIVI -->
     <div id="suivi-modal" class="modal">
         <div class="modal-content">
-            <span class="close-btn" onclick="fermerSuivi()">&times;</span>
+            <span class="close-btn" role="button" aria-label="Fermer" onclick="fermerSuivi()">&times;</span>
             <h2 data-i18n="track_title">Suivi de commande</h2>
             <p style="margin-bottom: 20px; font-size: 14px; color: #555;" data-i18n="track_desc">Entrez le numéro de téléphone utilisé lors de votre commande.</p>
             <div class="form-group" style="display: flex; gap: 10px;">
@@ -274,7 +294,7 @@
     </div>
 
     <!-- ================= AGENT IA CLIENT ================= -->
-    <button id="ai-chat-btn" onclick="toggleChatIA()" style="position: fixed; bottom: 20px; right: 20px; background: var(--or); color: var(--bleu-nuit); border: none; width: 60px; height: 60px; border-radius: 50%; font-size: 30px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 9999;">🤖</button>
+    <button id="ai-chat-btn" aria-label="Ouvrir l'assistant" onclick="toggleChatIA()" style="position: fixed; bottom: 20px; right: 20px; background: var(--or); color: var(--bleu-nuit); border: none; width: 60px; height: 60px; border-radius: 50%; font-size: 30px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 9999;">🤖</button>
 
     <div id="ai-chat-window" style="display: none; position: fixed; bottom: 90px; right: 20px; width: 350px; max-width: 90vw; height: 500px; max-height: 70vh; background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 9999; flex-direction: column; overflow: hidden;">
         <div style="background: var(--bleu-nuit); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
@@ -285,8 +305,8 @@
             <div style="background: #e8f5e9; padding: 10px; border-radius: 8px; align-self: flex-start; max-width: 80%;">Bonjour ! Comment puis-je vous aider aujourd'hui ?</div>
         </div>
         <div style="padding: 10px; border-top: 1px solid #ddd; display: flex; gap: 10px;">
-            <input type="text" id="ai-chat-input" placeholder="Posez votre question..." style="flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none;" onkeypress="if(event.key === 'Enter') envoyerMessageIA()">
-            <button onclick="envoyerMessageIA()" style="background: var(--vert); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer;">➤</button>
+            <input type="text" id="ai-chat-input" aria-label="Votre question" maxlength="500" placeholder="Posez votre question..." style="flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none;" onkeypress="if(event.key === 'Enter') envoyerMessageIA()">
+            <button aria-label="Envoyer" onclick="envoyerMessageIA()" style="background: var(--vert); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer;">➤</button>
         </div>
     </div>
 
