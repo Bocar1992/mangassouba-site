@@ -439,11 +439,16 @@ async function chargerCategoriesAdmin() {
         const reponse = await fetch(`${API_URL}/categories`); toutesLesCategories = await reponse.json();
         const tbody = document.getElementById('liste-categories-admin'); tbody.innerHTML = '';
         toutesLesCategories.forEach(cat => {
-            // SÉCURITÉ : On applique escapeHTML uniquement au nom du parent, pas au HTML qu'on génère
-            const parentName = cat.parent_nom ? escapeHTML(cat.parent_nom) : '<span style="color:#999;">Aucune</span>';
+            // CORRECTION ICI : On gère le texte d'un côté et le HTML de l'autre
+            let parentCell = '';
+            if (cat.parent_nom) {
+                parentCell = `<span style="color:var(--vert); font-weight:600;">${escapeHTML(cat.parent_nom)}</span>`;
+            } else {
+                parentCell = `<span style="color:#999;">Aucune</span>`;
+            }
             
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>#${cat.id}</td><td><strong>${escapeHTML(cat.nom)}</strong></td><td><span style="font-size:12px; color:#555;">EN: ${escapeHTML(cat.nom_en || '-')}<br>AR: ${escapeHTML(cat.nom_ar || '-')}</span></td><td>${parentName}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleCategorie(${cat.id})">Modifier</button><button class="btn-action btn-delete" onclick="supprimerCategorie(${cat.id})">Supprimer</button></td>`;
+            tr.innerHTML = `<td>#${cat.id}</td><td><strong>${escapeHTML(cat.nom)}</strong></td><td><span style="font-size:12px; color:#555;">EN: ${escapeHTML(cat.nom_en || '-')}<br>AR: ${escapeHTML(cat.nom_ar || '-')}</span></td><td>${parentCell}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleCategorie(${cat.id})">Modifier</button><button class="btn-action btn-delete" onclick="supprimerCategorie(${cat.id})">Supprimer</button></td>`;
             tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
