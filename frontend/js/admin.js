@@ -49,25 +49,22 @@ function seDeconnecter() { localStorage.removeItem('adminToken'); localStorage.r
 function afficherDashboard() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('dashboard-screen').style.display = 'block';
-    appliquerDroitsAdmin(); // NOUVEAU : On applique la sécurité visuelle selon le rôle
+    appliquerDroitsAdmin(); 
     chargerStats(); 
     chargerCategoriesAdmin();
 }
 
 // SÉCURITÉ VISUELLE : Masque les éléments selon le rôle
 function appliquerDroitsAdmin() {
-    if (adminData.role !== 'superadmin') {
-        // Cacher les menus réservés au gérant
+    if (adminData && adminData.role !== 'superadmin') {
         const menuCompta = document.getElementById('menu-comptabilite');
         if(menuCompta) menuCompta.style.display = 'none';
         const menuAdmins = document.getElementById('menu-admins');
         if(menuAdmins) menuAdmins.style.display = 'none';
         
-        // Cacher la carte "Chiffre d'Affaires" sur le tableau de bord
         const statCaContainer = document.getElementById('stat-ca-container');
         if(statCaContainer) statCaContainer.style.display = 'none';
 
-        // Cacher le champ "Prix d'achat" dans la fiche produit
         const prodPrixAchatContainer = document.getElementById('container-prix-achat');
         if(prodPrixAchatContainer) prodPrixAchatContainer.style.display = 'none';
     }
@@ -442,9 +439,11 @@ async function chargerCategoriesAdmin() {
         const reponse = await fetch(`${API_URL}/categories`); toutesLesCategories = await reponse.json();
         const tbody = document.getElementById('liste-categories-admin'); tbody.innerHTML = '';
         toutesLesCategories.forEach(cat => {
-            const parentName = cat.parent_nom ? cat.parent_nom : '<span style="color:#999;">Aucune</span>';
+            // SÉCURITÉ : On applique escapeHTML uniquement au nom du parent, pas au HTML qu'on génère
+            const parentName = cat.parent_nom ? escapeHTML(cat.parent_nom) : '<span style="color:#999;">Aucune</span>';
+            
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>#${cat.id}</td><td><strong>${escapeHTML(cat.nom)}</strong></td><td><span style="font-size:12px; color:#555;">EN: ${escapeHTML(cat.nom_en || '-')}<br>AR: ${escapeHTML(cat.nom_ar || '-')}</span></td><td>${escapeHTML(parentName)}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleCategorie(${cat.id})">Modifier</button><button class="btn-action btn-delete" onclick="supprimerCategorie(${cat.id})">Supprimer</button></td>`;
+            tr.innerHTML = `<td>#${cat.id}</td><td><strong>${escapeHTML(cat.nom)}</strong></td><td><span style="font-size:12px; color:#555;">EN: ${escapeHTML(cat.nom_en || '-')}<br>AR: ${escapeHTML(cat.nom_ar || '-')}</span></td><td>${parentName}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleCategorie(${cat.id})">Modifier</button><button class="btn-action btn-delete" onclick="supprimerCategorie(${cat.id})">Supprimer</button></td>`;
             tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }

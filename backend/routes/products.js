@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
+const jwt = require('jsonwebtoken'); // NOUVEAU : pour lire le token discrètement
 const cloudinary = require('../cloudinary');
 const db = require('../db');
 const { verifyAdmin } = require('../middleware/auth');
@@ -37,8 +38,8 @@ async function traduireTexte(texte, langueCible) {
   } catch (err) { return null; }
 }
 
-// 1. VOIR TOUS LES PRODUITS
-router.get('/', verifyAdmin, async (req, res) => {
+// 1. VOIR TOUS LES PRODUITS (Public pour le site client)
+router.get('/', async (req, res) => {
   try {
     const result = await db.query(`
       SELECT p.*, c.nom as categorie_nom, c.nom_en as categorie_nom_en, c.nom_ar as categorie_nom_ar 
@@ -48,13 +49,26 @@ router.get('/', verifyAdmin, async (req, res) => {
     `);
     
     let produits = result.rows;
-    // SÉCURITÉ : On cache le prix d'achat aux employés
-    if (req.admin.role !== 'superadmin') {
+    
+    // SÉCURITÉ : On vérifie si la personne qui demande est un superadmin
+    let isSuperAdmin = false;
+    const authHeader = req.headers['authorization'];
+    if (authHeader) {
+        const token = authHeader.split(' ')[1];
+        try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            if (decoded.role === 'superadmin') isSuperAdmin = true;
+        } catch (e) {} // Si le token est invalide, on ignore (c'est un client normal)
+    }
+
+    // Si ce n'est pas un superadmin, on supprime le prix d'achat de la réponse
+    if (!isSuperAdmin) {
         produits = produits.map(p => {
             delete p.prix_achat;
             return p;
         });
     }
+    
     res.json(produits);
   } catch (err) { res.status(500).json({ message: 'Erreur serveur.' }); }
 });
@@ -80,7 +94,6 @@ router.post('/', verifyAdmin, upload.fields([{ name: 'image', maxCount: 1 }, { n
       videoUrl = result.secure_url;
     }
 
-    // Si c'est un employé, le prix_achat sera undefined ou 0
     const finalPrixAchat = req.admin.role === 'superadmin' ? (prix_achat || 0) : 0;
 
     const result = await db.query(
@@ -118,7 +131,6 @@ router.put('/:id', verifyAdmin, upload.fields([{ name: 'image', maxCount: 1 }, {
       videoUrl = result.secure_url;
     }
 
-    // Si c'est un employé, on garde l'ancien prix d'achat pour ne pas l'écraser
     let finalPrixAchat = prix_achat || 0;
     if (req.admin.role !== 'superadmin') {
         const oldProd = await db.query('SELECT prix_achat FROM products WHERE id = $1', [id]);
