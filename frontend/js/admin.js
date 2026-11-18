@@ -8,6 +8,14 @@ let commandesGlobales = [];
 let lignesProforma = [];
 let commandeLignes = [];
 
+// SÉCURITÉ ANTI-XSS
+function escapeHTML(str) {
+    if (!str) return '';
+    return str.toString().replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[tag]));
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     if (tokenAdmin && adminData) afficherDashboard();
     else {
@@ -101,7 +109,7 @@ async function chargerCommandesAdmin() {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>#${cmd.id}</td>
-                <td><strong>${cmd.clientName}</strong><br><small>${cmd.phone}</small></td>
+                <td><strong>${escapeHTML(cmd.clientName)}</strong><br><small>${escapeHTML(cmd.phone)}</small></td>
                 <td>${new Intl.NumberFormat('fr-FR').format(cmd.total)} MRU</td>
                 <td>${date}</td>
                 <td>
@@ -161,7 +169,7 @@ function afficherLignesCommande() {
     if(commandeLignes.length === 0) { conteneur.innerHTML = '<p style="font-size:13px; color:#777; text-align:center;">Aucun article.</p>'; document.getElementById('cmd-total').innerText = 0; return; }
     
     let optionsProduits = '<option value="">-- Article personnalisé --</option>';
-    tousLesProduits.forEach(p => { optionsProduits += `<option value="${p.id}">${p.nom} (${p.prix} MRU)</option>`; });
+    tousLesProduits.forEach(p => { optionsProduits += `<option value="${p.id}">${escapeHTML(p.nom)} (${p.prix} MRU)</option>`; });
     
     let total = 0;
     commandeLignes.forEach((ligne, index) => {
@@ -169,7 +177,7 @@ function afficherLignesCommande() {
         const div = document.createElement('div'); div.style.cssText = "display: flex; gap: 10px; margin-bottom: 10px; align-items: center;";
         div.innerHTML = `
             <select onchange="changerProduitCommande(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">${optionsProduits}</select>
-            <input type="text" placeholder="Nom libre" value="${ligne.nom}" oninput="modifierNomLigneCmd(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc; ${ligne.produitId ? 'display:none;' : ''}">
+            <input type="text" placeholder="Nom libre" value="${escapeHTML(ligne.nom)}" oninput="modifierNomLigneCmd(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc; ${ligne.produitId ? 'display:none;' : ''}">
             <input type="number" placeholder="Qté" value="${ligne.qty}" min="1" oninput="modifierQteLigneCmd(${index}, this.value)" style="width: 60px; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
             <input type="number" placeholder="Prix" value="${ligne.prix}" min="0" oninput="modifierPrixLigneCmd(${index}, this.value)" style="width: 90px; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
             <button onclick="supprimerLigneCommande(${index})" style="background: red; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer;">X</button>`;
@@ -229,7 +237,7 @@ async function chargerBannersAdmin() {
         if(banners.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Aucune annonce.</td></tr>'; return; }
         banners.forEach(b => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td><img src="${b.image_url}" style="width: 80px; height: 40px; object-fit: cover; border-radius: 5px;"></td><td><strong>${b.title}</strong></td><td>${b.link_url || '-'}</td><td>${b.is_active ? '<span style="color:green; font-weight:bold;">Actif</span>' : '<span style="color:red;">Inactif</span>'}</td><td><button class="btn-action btn-delete" onclick="supprimerBanner(${b.id})">Supprimer</button></td>`;
+            tr.innerHTML = `<td><img src="${b.image_url}" style="width: 80px; height: 40px; object-fit: cover; border-radius: 5px;"></td><td><strong>${escapeHTML(b.title)}</strong></td><td>${escapeHTML(b.link_url || '-')}</td><td>${b.is_active ? '<span style="color:green; font-weight:bold;">Actif</span>' : '<span style="color:red;">Inactif</span>'}</td><td><button class="btn-action btn-delete" onclick="supprimerBanner(${b.id})">Supprimer</button></td>`;
             tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
@@ -253,7 +261,7 @@ async function chargerProduitsAdmin() {
             const imageUrl = prod.media ? prod.media : 'https://via.placeholder.com/50x50?text=?';
             const prixGrosTxt = prod.prix_gros > 0 ? `${new Intl.NumberFormat('fr-FR').format(prod.prix_gros)} MRU <br><small>(dès ${prod.seuil_gros})</small>` : '-';
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td><img src="${imageUrl}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;"></td><td><strong>${prod.nom}</strong> ${prod.video ? '🎥' : ''}</td><td>${new Intl.NumberFormat('fr-FR').format(prod.prix)} MRU</td><td style="color: #004085;">${prixGrosTxt}</td><td style="color: ${prod.stock < 5 ? 'red' : 'inherit'}; font-weight: ${prod.stock < 5 ? 'bold' : 'normal'};">${prod.stock}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleProduit(${prod.id})">Modifier</button><button class="btn-action btn-delete" onclick="supprimerProduit(${prod.id})">Supprimer</button></td>`;
+            tr.innerHTML = `<td><img src="${imageUrl}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;"></td><td><strong>${escapeHTML(prod.nom)}</strong> ${prod.video ? '🎥' : ''}</td><td>${new Intl.NumberFormat('fr-FR').format(prod.prix)} MRU</td><td style="color: #004085;">${prixGrosTxt}</td><td style="color: ${prod.stock < 5 ? 'red' : 'inherit'}; font-weight: ${prod.stock < 5 ? 'bold' : 'normal'};">${prod.stock}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleProduit(${prod.id})">Modifier</button><button class="btn-action btn-delete" onclick="supprimerProduit(${prod.id})">Supprimer</button></td>`;
             tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
@@ -262,7 +270,7 @@ function ouvrirModaleProduit(id = null) {
     document.getElementById('modal-produit').classList.add('show');
     document.getElementById('ai-prod-prompt').value = '';
     const selectCat = document.getElementById('prod-category'); selectCat.innerHTML = '<option value="">-- Choisir --</option>';
-    toutesLesCategories.forEach(cat => { const nomAffichage = cat.parent_nom ? `↳ ${cat.parent_nom} > ${cat.nom}` : cat.nom; selectCat.innerHTML += `<option value="${cat.id}">${nomAffichage}</option>`; });
+    toutesLesCategories.forEach(cat => { const nomAffichage = cat.parent_nom ? `↳ ${cat.parent_nom} > ${cat.nom}` : cat.nom; selectCat.innerHTML += `<option value="${cat.id}">${escapeHTML(nomAffichage)}</option>`; });
     if (id) {
         const prod = tousLesProduits.find(p => p.id === id);
         document.getElementById('modal-prod-titre').innerText = "Modifier le produit"; document.getElementById('prod-id').value = prod.id;
@@ -315,7 +323,7 @@ async function chargerDepensesAdmin() {
         if(depenses.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Aucune dépense.</td></tr>'; return; }
         depenses.forEach(d => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${new Date(d.date).toLocaleDateString('fr-FR')}</td><td><strong>${d.description}</strong></td><td><span style="background:#eee; padding:2px 6px; border-radius:4px; font-size:12px;">${d.category}</span></td><td style="color:red; font-weight:bold;">-${new Intl.NumberFormat('fr-FR').format(d.amount)} MRU</td><td><button class="btn-action btn-delete" onclick="supprimerDepense(${d.id})">X</button></td>`;
+            tr.innerHTML = `<td>${new Date(d.date).toLocaleDateString('fr-FR')}</td><td><strong>${escapeHTML(d.description)}</strong></td><td><span style="background:#eee; padding:2px 6px; border-radius:4px; font-size:12px;">${escapeHTML(d.category)}</span></td><td style="color:red; font-weight:bold;">-${new Intl.NumberFormat('fr-FR').format(d.amount)} MRU</td><td><button class="btn-action btn-delete" onclick="supprimerDepense(${d.id})">X</button></td>`;
             tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
@@ -335,7 +343,7 @@ async function chargerProformasAdmin() {
         const tbody = document.getElementById('liste-proformas-admin'); tbody.innerHTML = '';
         if(proformas.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Aucune proforma.</td></tr>'; return; }
         proformas.forEach(p => {
-            const tr = document.createElement('tr'); tr.innerHTML = `<td>PRO-${p.id}</td><td><strong>${p.client_name}</strong></td><td>${new Intl.NumberFormat('fr-FR').format(p.total)} MRU</td><td><button class="btn-action btn-delete" onclick="supprimerProforma(${p.id})">X</button></td>`; tbody.appendChild(tr);
+            const tr = document.createElement('tr'); tr.innerHTML = `<td>PRO-${p.id}</td><td><strong>${escapeHTML(p.client_name)}</strong></td><td>${new Intl.NumberFormat('fr-FR').format(p.total)} MRU</td><td><button class="btn-action btn-delete" onclick="supprimerProforma(${p.id})">X</button></td>`; tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
 }
@@ -345,12 +353,12 @@ function ajouterLigneProforma() { lignesProforma.push({ nom: '', prix: 0, qty: 1
 function afficherLignesProforma() {
     const conteneur = document.getElementById('proforma-lignes'); conteneur.innerHTML = '';
     if(lignesProforma.length === 0) { conteneur.innerHTML = '<p style="font-size:13px; color:#777; text-align:center;">Aucun article.</p>'; document.getElementById('prof-total').innerText = 0; return; }
-    let optionsProduits = '<option value="">-- Article personnalisé --</option>'; tousLesProduits.forEach(p => { optionsProduits += `<option value="${p.id}">${p.nom} (${p.prix} MRU)</option>`; });
+    let optionsProduits = '<option value="">-- Article personnalisé --</option>'; tousLesProduits.forEach(p => { optionsProduits += `<option value="${p.id}">${escapeHTML(p.nom)} (${p.prix} MRU)</option>`; });
     let total = 0;
     lignesProforma.forEach((ligne, index) => {
         total += (ligne.prix * ligne.qty);
         const div = document.createElement('div'); div.style.cssText = "display: flex; gap: 10px; margin-bottom: 10px; align-items: center;";
-        div.innerHTML = `<select onchange="changerProduitProforma(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">${optionsProduits}</select><input type="text" placeholder="Nom libre" value="${ligne.nom}" oninput="modifierNomLigne(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc; ${ligne.produitId ? 'display:none;' : ''}"><input type="number" placeholder="Qté" value="${ligne.qty}" min="1" oninput="modifierQteLigne(${index}, this.value)" style="width: 60px; padding: 8px; border-radius: 5px; border: 1px solid #ccc;"><input type="number" placeholder="Prix" value="${ligne.prix}" min="0" oninput="modifierPrixLigne(${index}, this.value)" style="width: 90px; padding: 8px; border-radius: 5px; border: 1px solid #ccc;"><button onclick="supprimerLigneProforma(${index})" style="background: red; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer;">X</button>`;
+        div.innerHTML = `<select onchange="changerProduitProforma(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">${optionsProduits}</select><input type="text" placeholder="Nom libre" value="${escapeHTML(ligne.nom)}" oninput="modifierNomLigne(${index}, this.value)" style="flex: 2; padding: 8px; border-radius: 5px; border: 1px solid #ccc; ${ligne.produitId ? 'display:none;' : ''}"><input type="number" placeholder="Qté" value="${ligne.qty}" min="1" oninput="modifierQteLigne(${index}, this.value)" style="width: 60px; padding: 8px; border-radius: 5px; border: 1px solid #ccc;"><input type="number" placeholder="Prix" value="${ligne.prix}" min="0" oninput="modifierPrixLigne(${index}, this.value)" style="width: 90px; padding: 8px; border-radius: 5px; border: 1px solid #ccc;"><button onclick="supprimerLigneProforma(${index})" style="background: red; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer;">X</button>`;
         const select = div.querySelector('select'); if(ligne.produitId) select.value = ligne.produitId;
         conteneur.appendChild(div);
     });
@@ -383,7 +391,7 @@ async function chargerCategoriesAdmin() {
         toutesLesCategories.forEach(cat => {
             const parentName = cat.parent_nom ? cat.parent_nom : '<span style="color:#999;">Aucune</span>';
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>#${cat.id}</td><td><strong>${cat.nom}</strong></td><td><span style="font-size:12px; color:#555;">EN: ${cat.nom_en || '-'}<br>AR: ${cat.nom_ar || '-'}</span></td><td>${parentName}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleCategorie(${cat.id})">Modifier</button><button class="btn-action btn-delete" onclick="supprimerCategorie(${cat.id})">Supprimer</button></td>`;
+            tr.innerHTML = `<td>#${cat.id}</td><td><strong>${escapeHTML(cat.nom)}</strong></td><td><span style="font-size:12px; color:#555;">EN: ${escapeHTML(cat.nom_en || '-')}<br>AR: ${escapeHTML(cat.nom_ar || '-')}</span></td><td>${escapeHTML(parentName)}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleCategorie(${cat.id})">Modifier</button><button class="btn-action btn-delete" onclick="supprimerCategorie(${cat.id})">Supprimer</button></td>`;
             tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
@@ -391,7 +399,7 @@ async function chargerCategoriesAdmin() {
 function ouvrirModaleCategorie(id = null) {
     document.getElementById('modal-categorie').classList.add('show');
     const selectParent = document.getElementById('cat-parent'); selectParent.innerHTML = '<option value="">-- Aucune --</option>';
-    toutesLesCategories.filter(c => c.parent_id === null).forEach(c => { selectParent.innerHTML += `<option value="${c.id}">${c.nom}</option>`; });
+    toutesLesCategories.filter(c => c.parent_id === null).forEach(c => { selectParent.innerHTML += `<option value="${c.id}">${escapeHTML(c.nom)}</option>`; });
     if (id) { const cat = toutesLesCategories.find(c => c.id === id); document.getElementById('modal-cat-titre').innerText = "Modifier"; document.getElementById('cat-id').value = cat.id; document.getElementById('cat-nom').value = cat.nom; selectParent.value = cat.parent_id || ""; } 
     else { document.getElementById('modal-cat-titre').innerText = "Nouvelle Catégorie"; document.getElementById('cat-id').value = ''; document.getElementById('cat-nom').value = ''; selectParent.value = ""; }
 }
@@ -411,7 +419,7 @@ async function chargerClientsAdmin() {
         if(clients.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Aucun client.</td></tr>'; return; }
         clients.forEach(c => {
             const date = new Date(c.created_at).toLocaleDateString('fr-FR');
-            const tr = document.createElement('tr'); tr.innerHTML = `<td>#${c.id}</td><td><strong>${c.name}</strong></td><td>${c.phone}</td><td>🌟 ${c.points}</td><td>${date}</td><td><button class="btn-action btn-delete" onclick="supprimerClient(${c.id})">Supprimer</button></td>`; tbody.appendChild(tr);
+            const tr = document.createElement('tr'); tr.innerHTML = `<td>#${c.id}</td><td><strong>${escapeHTML(c.name)}</strong></td><td>${escapeHTML(c.phone)}</td><td>🌟 ${c.points}</td><td>${date}</td><td><button class="btn-action btn-delete" onclick="supprimerClient(${c.id})">Supprimer</button></td>`; tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
 }
@@ -423,7 +431,7 @@ async function chargerAdminsAdmin() {
         const tbody = document.getElementById('liste-admins-admin'); tbody.innerHTML = '';
         tousLesAdmins.forEach(a => {
             const roleBadge = a.role === 'superadmin' ? '<span style="background:var(--or); color:var(--bleu-nuit); padding:2px 8px; border-radius:10px; font-size:11px; font-weight:bold;">Super Admin</span>' : 'Admin';
-            const tr = document.createElement('tr'); tr.innerHTML = `<td>#${a.id}</td><td><strong>${a.nom}</strong></td><td>${a.email}</td><td>${roleBadge}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleAdmin(${a.id})">Modifier</button>${a.id !== 1 ? `<button class="btn-action btn-delete" onclick="supprimerAdmin(${a.id})">Supprimer</button>` : ''}</td>`; tbody.appendChild(tr);
+            const tr = document.createElement('tr'); tr.innerHTML = `<td>#${a.id}</td><td><strong>${escapeHTML(a.nom)}</strong></td><td>${escapeHTML(a.email)}</td><td>${roleBadge}</td><td><button class="btn-action btn-edit" onclick="ouvrirModaleAdmin(${a.id})">Modifier</button>${a.id !== 1 ? `<button class="btn-action btn-delete" onclick="supprimerAdmin(${a.id})">Supprimer</button>` : ''}</td>`; tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
 }
@@ -444,7 +452,6 @@ async function sauvegarderAdmin() {
     try { const reponse = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenAdmin}` }, body: JSON.stringify({ nom, email, password, role }) }); if (reponse.ok) { fermerModaleAdmin(); chargerAdminsAdmin(); } else { const d = await reponse.json(); alert(d.message); } } catch (err) { alert("Erreur serveur."); } }
 async function supprimerAdmin(id) { if (!confirm("Supprimer ?")) return; try { const reponse = await fetch(`${API_URL}/admins/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if (reponse.ok) chargerAdminsAdmin(); } catch (err) { alert("Erreur."); } }
 
-// ==================== ASSISTANT IA ADMIN ====================
 async function genererProduitIA() {
     const texte = document.getElementById('ai-prod-prompt').value;
     if (!texte) return alert("Veuillez décrire le produit à ajouter.");
@@ -453,11 +460,7 @@ async function genererProduitIA() {
     btn.innerText = "🪄 L'IA réfléchit..."; btn.disabled = true;
 
     try {
-        const rep = await fetch(`${API_URL}/ai/admin/generate-product`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ texte })
-        });
+        const rep = await fetch(`${API_URL}/ai/admin/generate-product`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texte }) });
         const data = await rep.json();
         
         if (data.nom) document.getElementById('prod-nom').value = data.nom;
@@ -467,7 +470,6 @@ async function genererProduitIA() {
         if (data.prix_achat) document.getElementById('prod-prix-achat').value = data.prix_achat;
         
         document.getElementById('ai-prod-prompt').value = '';
-        
     } catch (e) { alert("L'IA n'a pas pu comprendre la demande."); } 
     finally { btn.innerText = "✨ Remplir le formulaire automatiquement"; btn.disabled = false; }
 }

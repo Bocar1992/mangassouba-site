@@ -9,6 +9,14 @@ let noteActuelle = 5;
 let tokenClient = localStorage.getItem('clientToken') || null;
 let clientData = JSON.parse(localStorage.getItem('clientData')) || null;
 
+// SÉCURITÉ ANTI-XSS
+function escapeHTML(str) {
+    if (!str) return '';
+    return str.toString().replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[tag]));
+}
+
 const traductions = {
     fr: { cart: "Panier", hero_badge: "Votre Commerce de Proximité", hero_title: "Bienvenue chez Mangassouba et Fils", hero_desc: "Quincaillerie, alimentation, électroménager, et bien plus encore. Retrouvez tout ce dont vous avez besoin au quotidien, au cœur de Sélibaby.", hero_btn1: "Découvrir nos produits", hero_btn2: "Nous contacter", rayons_title: "La diversité à portée de main", rayons_desc: "Que vous soyez un professionnel, un bricoleur ou simplement en quête de vos courses quotidiennes, Mangassouba et Fils est votre point de rendez-vous. Un seul magasin pour tous vos besoins.", rayon_quincaillerie: "Quincaillerie", rayon_alimentation: "Alimentation", rayon_divers: "Divers", categories: "Catégories", products: "Nos Produits", latest_products: "Nouveautés", loading: "Chargement...", footer_desc: "Votre commerce général de référence au cœur du marché de Sélibaby.", rights: "Tous droits réservés.", admin_space: "Espace Administrateur", your_cart: "Votre Panier", total: "Total :", order_btn: "Passer la commande", checkout_title: "Finaliser la commande", name: "Nom complet *", phone: "Téléphone *", address: "Adresse / Quartier *", promo: "Code Promo (Optionnel)", apply: "Appliquer", payment: "Mode de paiement *", cash: "Espèces à la livraison", momo: "Mobile Money (Sedad)", subtotal: "Sous-total :", discount: "Réduction :", total_pay: "Total à payer :", confirm_btn: "Confirmer la commande", empty_cart: "Votre panier est vide.", add_to_cart: "Ajouter au panier", no_product: "Aucun produit trouvé.", all: "Tous les produits", nav_contact: "Contact", nav_track: "Suivi", nav_login: "Connexion", password: "Mot de passe *", register_btn: "S'inscrire", logout: "Déconnexion", contact_title: "Contactez-nous", contact_desc: "Nous sommes à votre écoute pour toute question ou commande.", contact_address: "Adresse", contact_phone: "Téléphone", contact_whatsapp: "WhatsApp", contact_hours: "Horaires", contact_hours_val: "Tous les jours (sauf vendredi) : 08h00 - 18h00", track_title: "Suivi de commande", track_desc: "Entrez le numéro de téléphone utilisé lors de votre commande.", track_btn: "Rechercher", track_no_found: "Aucune commande trouvée pour ce numéro.", track_order: "Commande", track_status: "Statut", track_date: "Date", track_total: "Total", status_attente: "En attente", status_confirmee: "Confirmée", status_livree: "Livrée", search_placeholder: "Rechercher un produit...", reviews_title: "Avis Clients", leave_review: "Laisser un avis", your_name: "Votre nom", your_comment: "Votre commentaire (optionnel)", send_review: "Envoyer", wholesale_info: "Tarif de gros dès" },
     en: { cart: "Cart", hero_badge: "Your Local Store", hero_title: "Welcome to Mangassouba et Fils", hero_desc: "Hardware, groceries, home appliances, and much more. Find everything you need for your daily life in the heart of Selibaby.", hero_btn1: "Discover our products", hero_btn2: "Contact us", rayons_title: "Diversity at your fingertips", rayons_desc: "Whether you are a professional, a DIY enthusiast, or simply doing your daily shopping, Mangassouba et Fils is your one-stop shop for all your needs.", rayon_quincaillerie: "Hardware", rayon_alimentation: "Groceries", rayon_divers: "Miscellaneous", categories: "Categories", products: "Our Products", latest_products: "New Arrivals", loading: "Loading...", footer_desc: "Your reference general store in the heart of Selibaby market.", rights: "All rights reserved.", admin_space: "Admin Space", your_cart: "Your Cart", total: "Total:", order_btn: "Place Order", checkout_title: "Finalize order", name: "Full Name *", phone: "Phone *", address: "Address / District *", promo: "Promo Code (Optional)", apply: "Apply", payment: "Payment Method *", cash: "Cash on delivery", momo: "Mobile Money (Sedad)", subtotal: "Subtotal:", discount: "Discount:", total_pay: "Total to pay:", confirm_btn: "Confirm order", empty_cart: "Your cart is empty.", add_to_cart: "Add to cart", no_product: "No products found.", all: "All products", nav_contact: "Contact", nav_track: "Track", nav_login: "Login", password: "Password *", register_btn: "Register", logout: "Logout", contact_title: "Contact Us", contact_desc: "We are here to answer any questions or orders.", contact_address: "Address", contact_phone: "Phone", contact_whatsapp: "WhatsApp", contact_hours: "Opening Hours", contact_hours_val: "Every day (except Friday): 08:00 AM - 06:00 PM", track_title: "Order Tracking", track_desc: "Enter the phone number used for your order.", track_btn: "Search", track_no_found: "No orders found for this number.", track_order: "Order", track_status: "Status", track_date: "Date", track_total: "Total", status_attente: "Pending", status_confirmee: "Confirmed", status_livree: "Delivered", search_placeholder: "Search for a product...", reviews_title: "Customer Reviews", leave_review: "Leave a review", your_name: "Your name", your_comment: "Your comment (optional)", send_review: "Send", wholesale_info: "Wholesale price from" },
@@ -84,8 +92,8 @@ async function chargerCarrousel() {
             div.className = 'carrousel-item';
             div.onclick = () => { if (b.link_url) window.location.href = b.link_url; else window.location.href = '#produits'; };
             div.innerHTML = `
-                <img src="${b.image_url}" alt="${b.title}">
-                <div class="carrousel-content"><h3>${b.title}</h3><p>${b.description || ''}</p></div>`;
+                <img src="${b.image_url}" alt="${escapeHTML(b.title)}">
+                <div class="carrousel-content"><h3>${escapeHTML(b.title)}</h3><p>${escapeHTML(b.description || '')}</p></div>`;
             conteneur.appendChild(div);
         });
 
@@ -115,10 +123,10 @@ async function chargerCategories() {
         parents.forEach(parent => {
             let enfants = toutesLesCategories.filter(c => c.parent_id === parent.id);
             let hasChildren = enfants.length > 0;
-            html += `<div class="category-item"><div class="category-header" onclick="toggleCategory(this, ${parent.id})"><span>${getNomCat(parent)}</span>${hasChildren ? '<span class="category-arrow">▼</span>' : ''}</div>`;
+            html += `<div class="category-item"><div class="category-header" onclick="toggleCategory(this, ${parent.id})"><span>${escapeHTML(getNomCat(parent))}</span>${hasChildren ? '<span class="category-arrow">▼</span>' : ''}</div>`;
             if (hasChildren) {
                 html += `<div class="subcategory-list" id="subcat-${parent.id}"><div class="subcategory-list-inner">`;
-                enfants.forEach(enfant => { html += `<div class="sub-cat-link" onclick="filtrerCategorie(${enfant.id}, this)">${getNomCat(enfant)}</div>`; });
+                enfants.forEach(enfant => { html += `<div class="sub-cat-link" onclick="filtrerCategorie(${enfant.id}, this)">${escapeHTML(getNomCat(enfant))}</div>`; });
                 html += `</div></div>`;
             }
             html += `</div>`;
@@ -216,13 +224,13 @@ function afficherProduits(produits) {
         }
 
         carte.innerHTML = `
-            <img src="${imageUrl}" alt="${nomAffiche}">
+            <img src="${imageUrl}" alt="${escapeHTML(nomAffiche)}">
             <div class="info-produit">
-                <p class="categorie">${nomCategorie}</p>
-                <h3>${nomAffiche}</h3>
+                <p class="categorie">${escapeHTML(nomCategorie)}</p>
+                <h3>${escapeHTML(nomAffiche)}</h3>
                 ${badgeGros}
                 <p class="prix">${prixFormatte} MRU</p>
-                <button class="btn-ajouter" onclick="ajouterAuPanier(${produit.id}, '${nomAffiche.replace(/'/g, "\\'")}', ${produit.prix}, '${imageUrl}', ${produit.prix_gros || 0}, ${produit.seuil_gros || 10})">${traductions[langueActuelle].add_to_cart}</button>
+                <button class="btn-ajouter" onclick="ajouterAuPanier(${produit.id}, '${escapeHTML(nomAffiche).replace(/'/g, "\\'")}', ${produit.prix}, '${imageUrl}', ${produit.prix_gros || 0}, ${produit.seuil_gros || 10})">${traductions[langueActuelle].add_to_cart}</button>
             </div>`;
         conteneur.appendChild(carte);
     });
@@ -349,7 +357,7 @@ async function chargerAvis(productId) {
         avis.forEach(a => {
             const div = document.createElement('div'); div.className = 'avis-item';
             const etoiles = '★'.repeat(a.rating) + '☆'.repeat(5 - a.rating);
-            div.innerHTML = `<div class="avis-header"><strong>${a.client_name}</strong> <span class="avis-etoiles">${etoiles}</span></div><p class="avis-comment">${a.comment || ''}</p>`;
+            div.innerHTML = `<div class="avis-header"><strong>${escapeHTML(a.client_name)}</strong> <span class="avis-etoiles">${etoiles}</span></div><p class="avis-comment">${escapeHTML(a.comment || '')}</p>`;
             conteneur.appendChild(div);
         });
     } catch (err) { conteneur.innerHTML = 'Erreur.'; }
@@ -382,7 +390,7 @@ async function rechercherCommande() {
             let statusClass = cmd.status === 'livrée' ? 'status-livree' : (cmd.status === 'confirmée' ? 'status-confirmee' : 'status-attente');
             let statusText = traductions[langueActuelle]['status_'+cmd.status.replace('é','e')] || cmd.status;
             let itemsHtml = '<ul>'; const itemsArray = typeof cmd.items === 'string' ? JSON.parse(cmd.items) : cmd.items;
-            itemsArray.forEach(item => { itemsHtml += `<li>${item.qty}x ${item.nom}</li>`; }); itemsHtml += '</ul>';
+            itemsArray.forEach(item => { itemsHtml += `<li>${item.qty}x ${escapeHTML(item.nom)}</li>`; }); itemsHtml += '</ul>';
             const div = document.createElement('div'); div.className = 'suivi-card';
             div.innerHTML = `<div class="suivi-header"><h4>Commande #${cmd.id}</h4><span class="suivi-status ${statusClass}">${statusText}</span></div><div class="suivi-details"><p><strong>Date :</strong> ${date}</p><p><strong>Total :</strong> ${new Intl.NumberFormat('fr-FR').format(cmd.total)} MRU</p><div style="margin-top: 10px;">${itemsHtml}</div></div>`;
             conteneur.appendChild(div);
@@ -412,7 +420,7 @@ function mettreAJourPanierUI() {
             const div = document.createElement('div'); div.className = 'item-panier';
             const prixFormatte = new Intl.NumberFormat(langueActuelle === 'ar' ? 'ar-MR' : (langueActuelle === 'en' ? 'en-US' : 'fr-FR')).format(prixUnitaire);
             const badgeGros = isGros ? `<span style="font-size:10px; background:var(--vert); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">Prix de gros</span>` : '';
-            div.innerHTML = `<img src="${item.image}"><div class="item-details"><h4>${item.nom} ${badgeGros}</h4><p class="prix-item">${prixFormatte} MRU</p><div class="item-actions"><button onclick="modifierQuantite(${item.id}, -1)">-</button><span>${item.qty}</span><button onclick="modifierQuantite(${item.id}, 1)">+</button><button class="btn-supprimer" onclick="supprimerDuPanier(${item.id})">X</button></div></div>`;
+            div.innerHTML = `<img src="${item.image}"><div class="item-details"><h4>${escapeHTML(item.nom)} ${badgeGros}</h4><p class="prix-item">${prixFormatte} MRU</p><div class="item-actions"><button onclick="modifierQuantite(${item.id}, -1)">-</button><span>${item.qty}</span><button onclick="modifierQuantite(${item.id}, 1)">+</button><button class="btn-supprimer" onclick="supprimerDuPanier(${item.id})">X</button></div></div>`;
             conteneur.appendChild(div);
         });
     }
@@ -479,7 +487,6 @@ async function envoyerCommande(event) {
     } catch (erreur) { alert("Erreur de connexion."); } finally { btn.innerText = traductions[langueActuelle].confirm_btn; btn.disabled = false; }
 }
 
-// ==================== AGENT IA CLIENT ====================
 function toggleChatIA() {
     const win = document.getElementById('ai-chat-window');
     win.style.display = win.style.display === 'none' ? 'flex' : 'none';
@@ -491,27 +498,20 @@ async function envoyerMessageIA() {
     if (!message) return;
 
     const messagesContainer = document.getElementById('ai-chat-messages');
-    
-    // Afficher le message du client
-    messagesContainer.innerHTML += `<div style="background: var(--bleu-nuit); color: white; padding: 10px; border-radius: 8px; align-self: flex-end; max-width: 80%;">${message}</div>`;
+    messagesContainer.innerHTML += `<div style="background: var(--bleu-nuit); color: white; padding: 10px; border-radius: 8px; align-self: flex-end; max-width: 80%;">${escapeHTML(message)}</div>`;
     input.value = '';
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-    // Afficher "L'assistant écrit..."
     const loadingId = 'loading-' + Date.now();
     messagesContainer.innerHTML += `<div id="${loadingId}" style="background: #e8f5e9; padding: 10px; border-radius: 8px; align-self: flex-start;">...</div>`;
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
     try {
-        const rep = await fetch(`${API_URL}/ai/chat`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message })
-        });
+        const rep = await fetch(`${API_URL}/ai/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message }) });
         const data = await rep.json();
         
         document.getElementById(loadingId).remove();
-        messagesContainer.innerHTML += `<div style="background: #e8f5e9; padding: 10px; border-radius: 8px; align-self: flex-start; max-width: 80%;">${data.response}</div>`;
+        messagesContainer.innerHTML += `<div style="background: #e8f5e9; padding: 10px; border-radius: 8px; align-self: flex-start; max-width: 80%;">${escapeHTML(data.response)}</div>`;
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     } catch (e) {
         document.getElementById(loadingId).innerText = "Désolé, je suis hors ligne.";

@@ -6,20 +6,25 @@ const db = require('../db');
 const { verifyAdmin } = require('../middleware/auth');
 
 const storage = multer.memoryStorage();
+
+// SÉCURITÉ : On limite à 10Mo et on n'accepte que les images et vidéos
 const upload = multer({ 
     storage: storage,
-    limits: { fileSize: 50 * 1024 * 1024 } // Limite à 50 Mo pour les vidéos
+    limits: { fileSize: 10 * 1024 * 1024 }, 
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Seuls les images et vidéos sont autorisés.'));
+        }
+    }
 });
 
-// Fonction générique pour uploader image ou vidéo
 const streamUpload = (buffer, resourceType = 'image') => {
   return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { folder: 'mangassouba_produits', resource_type: resourceType },
-      (error, result) => {
-        if (result) resolve(result); else reject(error);
-      }
-    );
+    const stream = cloudinary.uploader.upload_stream({ folder: 'mangassouba_produits', resource_type: resourceType }, (error, result) => {
+      if (result) resolve(result); else reject(error);
+    });
     stream.end(buffer);
   });
 };

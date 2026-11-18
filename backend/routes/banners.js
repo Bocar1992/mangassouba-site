@@ -6,7 +6,19 @@ const db = require('../db');
 const { verifyAdmin } = require('../middleware/auth');
 
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+
+// SÉCURITÉ : Limite 5Mo et uniquement les images
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Seules les images sont autorisées.'));
+        }
+    }
+});
 
 const streamUpload = (buffer) => {
   return new Promise((resolve, reject) => {
@@ -17,7 +29,6 @@ const streamUpload = (buffer) => {
   });
 };
 
-// 1. VOIR TOUTES LES ANNONCES (Public)
 router.get('/', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM banners WHERE is_active = true ORDER BY created_at DESC');
@@ -25,7 +36,6 @@ router.get('/', async (req, res) => {
   } catch (err) { res.status(500).json({ message: 'Erreur serveur.' }); }
 });
 
-// 2. VOIR TOUTES LES ANNONCES POUR L'ADMIN (Même inactives)
 router.get('/admin', verifyAdmin, async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM banners ORDER BY created_at DESC');
@@ -33,7 +43,6 @@ router.get('/admin', verifyAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ message: 'Erreur serveur.' }); }
 });
 
-// 3. AJOUTER UNE ANNONCE
 router.post('/', verifyAdmin, upload.single('image'), async (req, res) => {
   const { title, description, link_url } = req.body;
   let imageUrl = null;
@@ -51,7 +60,6 @@ router.post('/', verifyAdmin, upload.single('image'), async (req, res) => {
   } catch (err) { res.status(500).json({ message: 'Erreur.' }); }
 });
 
-// 4. SUPPRIMER UNE ANNONCE
 router.delete('/:id', verifyAdmin, async (req, res) => {
   try {
     await db.query('DELETE FROM banners WHERE id = $1', [req.params.id]);
