@@ -3,34 +3,38 @@ const router = express.Router();
 const db = require('../db');
 require('dotenv').config();
 
-async function appelerGemini(prompt) {
+async function appelerOpenRouter(prompt) {
     try {
-        // ⚠️ NOUVEAU MODÈLE : gemini-2.5-flash (compatible avec les nouvelles clés AQ.)
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-        
+        const url = 'https://openrouter.ai/api/v1/chat/completions';
         const reponse = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                contents: [{ parts: [{ text: prompt }] }] 
+            headers: {
+                'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                'Content-Type': 'application/json',
+                // OpenRouter recommande ces en-têtes pour identifier ton app
+                'HTTP-Referer': 'https://mangassouba-frontend.onrender.com', 
+                'X-Title': 'Mangassouba et Fils'
+            },
+            body: JSON.stringify({
+                model: 'meta-llama/llama-3.1-8b-instruct:free', // Modèle gratuit et rapide
+                messages: [{ role: 'user', content: prompt }]
             })
         });
         
         const data = await reponse.json();
         
-        // Si Google répond avec une erreur, on l'affiche dans les logs Render
         if (data.error) {
-            console.error("Erreur renvoyée par Google :", data.error);
+            console.error("Erreur renvoyée par OpenRouter :", data.error);
             throw new Error(data.error.message);
         }
 
-        if (data.candidates && data.candidates.length > 0) {
-            return data.candidates[0].content.parts[0].text;
+        if (data.choices && data.choices.length > 0) {
+            return data.choices[0].message.content;
         } else {
-            throw new Error("L'API Gemini a renvoyé une réponse vide.");
+            throw new Error("L'API n'a renvoyé aucune réponse.");
         }
     } catch (err) {
-        console.error("❌ Erreur de connexion à Gemini :", err.message);
+        console.error("❌ Erreur de connexion à OpenRouter :", err.message);
         throw err;
     }
 }
@@ -51,10 +55,10 @@ router.post('/chat', async (req, res) => {
         Réponds brièvement et poliment.
         `;
         
-        const reponseIA = await appelerGemini(prompt);
+        const reponseIA = await appelerOpenRouter(prompt);
         res.json({ response: reponseIA });
     } catch (err) {
-        res.status(500).json({ response: "Désolé, je ne peux pas répondre pour le moment (Erreur technique). Veuillez nous contacter au 00222 46 43 22 53." });
+        res.status(500).json({ response: "Désolé, je ne peux pas répondre pour le moment. Veuillez nous contacter au 00222 46 43 22 53." });
     }
 });
 
@@ -75,7 +79,7 @@ router.post('/admin/generate-product', async (req, res) => {
         Ne renvoie QUE le JSON, sans texte avant ou après, sans balises markdown.
         `;
         
-        let reponseIA = await appelerGemini(prompt);
+        let reponseIA = await appelerOpenRouter(prompt);
         
         // Nettoyage de sécurité au cas où l'IA ajoute des balises ```
         reponseIA = reponseIA.replace(/```json/g, '').replace(/```/g, '').trim();
