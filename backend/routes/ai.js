@@ -4,6 +4,12 @@ const db = require('../db');
 require('dotenv').config();
 
 async function appelerOpenRouter(prompt) {
+    // Vérification que la clé API est bien présente
+    if (!process.env.OPENROUTER_API_KEY) {
+        console.error("❌ ERREUR : La variable OPENROUTER_API_KEY n'est pas définie sur Render.");
+        throw new Error("Clé API manquante.");
+    }
+
     try {
         const url = 'https://openrouter.ai/api/v1/chat/completions';
         const reponse = await fetch(url, {
@@ -11,27 +17,30 @@ async function appelerOpenRouter(prompt) {
             headers: {
                 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
                 'Content-Type': 'application/json',
-                // OpenRouter recommande ces en-têtes pour identifier ton app
                 'HTTP-Referer': 'https://mangassouba-frontend.onrender.com', 
                 'X-Title': 'Mangassouba et Fils'
             },
             body: JSON.stringify({
-                model: 'meta-llama/llama-3.1-8b-instruct:free', // Modèle gratuit et rapide
+                // NOUVEAU MODÈLE GRATUIT ET ACTIF
+                model: 'inclusionai/ling-3.0-flash:free', 
                 messages: [{ role: 'user', content: prompt }]
             })
         });
         
         const data = await reponse.json();
         
+        // Gestion des erreurs renvoyées par OpenRouter
         if (data.error) {
-            console.error("Erreur renvoyée par OpenRouter :", data.error);
+            console.error("❌ Erreur OpenRouter :", data.error);
             throw new Error(data.error.message);
         }
 
-        if (data.choices && data.choices.length > 0) {
+        // Vérification que la réponse contient bien un choix
+        if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
             return data.choices[0].message.content;
         } else {
-            throw new Error("L'API n'a renvoyé aucune réponse.");
+            console.error("❌ Réponse vide ou invalide reçue :", JSON.stringify(data));
+            throw new Error("L'API n'a renvoyé aucune réponse valide.");
         }
     } catch (err) {
         console.error("❌ Erreur de connexion à OpenRouter :", err.message);
@@ -81,7 +90,7 @@ router.post('/admin/generate-product', async (req, res) => {
         
         let reponseIA = await appelerOpenRouter(prompt);
         
-        // Nettoyage de sécurité au cas où l'IA ajoute des balises ```
+        // Nettoyage de sécurité
         reponseIA = reponseIA.replace(/```json/g, '').replace(/```/g, '').trim();
         
         try {
