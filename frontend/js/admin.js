@@ -118,6 +118,79 @@ async function changerMonMotDePasse() {
     } catch (err) { alert("Erreur."); } finally { btn.innerText = "Mettre à jour"; btn.disabled = false; }
 }
 
+// ==================== IMPORT / EXPORT CSV ====================
+function ouvrirModaleImport() {
+    document.getElementById('modal-import').classList.add('show');
+    document.getElementById('import-file').value = '';
+}
+function fermerModaleImport() {
+    document.getElementById('modal-import').classList.remove('show');
+}
+
+function telechargerModeleCSV() {
+    const csvContent = "nom,prix,stock,category_id,description,prix_achat,prix_gros,seuil_gros\nMarteau,1500,10,1,Marteau en acier,800,1200,5\nTournevis,500,50,1,Tournevis cruciforme,200,0,0";
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "modele_produits.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+async function exporterProduitsCSV() {
+    try {
+        const reponse = await fetch(`${API_URL}/products/export`, {
+            headers: { 'Authorization': `Bearer ${tokenAdmin}` }
+        });
+        if (!reponse.ok) throw new Error("Erreur d'exportation");
+        
+        const blob = await reponse.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `catalogue_mangassouba_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (err) { alert("Impossible d'exporter le catalogue."); }
+}
+
+async function importerProduitsCSV() {
+    const fileInput = document.getElementById('import-file');
+    const file = fileInput.files[0];
+    if (!file) return alert("Veuillez sélectionner un fichier CSV.");
+
+    const formData = new FormData();
+    formData.append('csvFile', file);
+
+    const btn = document.querySelector('#modal-import .btn-save');
+    btn.innerText = "Importation en cours..."; btn.disabled = true;
+
+    try {
+        const reponse = await fetch(`${API_URL}/products/import`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${tokenAdmin}` },
+            body: formData
+        });
+        
+        const data = await reponse.json();
+        if (reponse.ok) {
+            let message = `✅ ${data.message}`;
+            if (data.errors && data.errors.length > 0) {
+                message += `\n\n⚠️ Lignes ignorées :\n` + data.errors.join('\n');
+            }
+            alert(message);
+            fermerModaleImport();
+            chargerProduitsAdmin();
+            chargerStats();
+        } else { alert("Erreur : " + data.message); }
+    } catch (err) { alert("Erreur de connexion au serveur."); } 
+    finally { btn.innerText = "Lancer l'importation"; btn.disabled = false; }
+}
+
 // ==================== COMMANDES ====================
 async function chargerCommandesAdmin() {
     try {
@@ -439,7 +512,6 @@ async function chargerCategoriesAdmin() {
         const reponse = await fetch(`${API_URL}/categories`); toutesLesCategories = await reponse.json();
         const tbody = document.getElementById('liste-categories-admin'); tbody.innerHTML = '';
         toutesLesCategories.forEach(cat => {
-            // CORRECTION ICI : On gère le texte d'un côté et le HTML de l'autre
             let parentCell = '';
             if (cat.parent_nom) {
                 parentCell = `<span style="color:var(--vert); font-weight:600;">${escapeHTML(cat.parent_nom)}</span>`;
