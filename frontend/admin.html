@@ -31,13 +31,15 @@
                 </div>
                 <ul class="sidebar-menu">
                     <li class="active" onclick="changerOnglet('dashboard', this)">📊 Tableau de bord</li>
-                    <li onclick="changerOnglet('comptabilite', this)">💰 Comptabilité</li>
+                    <!-- ID ajouté pour le masquage -->
+                    <li id="menu-comptabilite" onclick="changerOnglet('comptabilite', this)">💰 Comptabilité</li>
                     <li onclick="changerOnglet('banners', this)">📢 Annonces</li>
                     <li onclick="changerOnglet('categories', this)">📁 Catégories</li>
                     <li onclick="changerOnglet('produits', this)">📦 Produits</li>
                     <li onclick="changerOnglet('commandes', this)">🛒 Commandes</li>
                     <li onclick="changerOnglet('clients', this)">👥 Clients</li>
-                    <li onclick="changerOnglet('admins', this)">🛡️ Admins</li>
+                    <!-- ID ajouté pour le masquage -->
+                    <li id="menu-admins" onclick="changerOnglet('admins', this)">🛡️ Admins</li>
                     <li onclick="ouvrirMonCompte()">⚙️ Mon Compte</li>
                 </ul>
                 <div class="sidebar-footer">
@@ -50,7 +52,8 @@
                 <section id="section-dashboard" class="page-section active">
                     <h1 class="page-title">Vue d'ensemble</h1>
                     <div class="stats-grid">
-                        <div class="stat-card"><h3>Chiffre d'Affaires</h3><p id="stat-ca">0 MRU</p></div>
+                        <!-- ID ajouté pour le masquage -->
+                        <div class="stat-card" id="stat-ca-container"><h3>Chiffre d'Affaires</h3><p id="stat-ca">0 MRU</p></div>
                         <div class="stat-card or"><h3>Commandes en attente</h3><p id="stat-attente">0</p></div>
                         <div class="stat-card rouge"><h3>Alertes Stock (< 5)</h3><p id="stat-stock">0</p></div>
                         <div class="stat-card"><h3>Total Produits</h3><p id="stat-produits">0</p></div>
@@ -245,7 +248,11 @@
                 <div style="background: #f0f4f1; padding: 10px; border-radius: 8px;"><label style="color:#004085;">Prix Gros (MRU)</label><input type="number" id="prod-prix-gros"></div>
                 <div><label>Seuil de Gros (Qté)</label><input type="number" id="prod-seuil-gros" value="10"></div>
                 <div><label>Stock *</label><input type="number" id="prod-stock" required></div>
-                <div style="grid-column: span 2;"><label>Prix d'Achat (Interne)</label><input type="number" id="prod-prix-achat"></div>
+                
+                <!-- ID ajouté pour le masquage du prix d'achat -->
+                <div style="grid-column: span 2;" id="container-prix-achat">
+                    <label>Prix d'Achat (Interne)</label><input type="number" id="prod-prix-achat">
+                </div>
             </div>
             <label style="display:block; margin:15px 0 5px; font-weight:600;">Description (FR)</label>
             <textarea id="prod-desc" rows="3" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px;"></textarea>
@@ -331,7 +338,8 @@
             <label style="display:block; margin-bottom:5px; font-weight:600;">Mot de passe (vide = inchangé)</label><input type="password" id="admin-new-password">
             <label style="display:block; margin-bottom:5px; font-weight:600;">Rôle</label>
             <select id="admin-role" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid #ddd; border-radius:8px;">
-                <option value="admin">Admin</option><option value="superadmin">Super Admin</option>
+                <option value="admin">Admin (Employé)</option>
+                <option value="superadmin">Super Admin (Gérant)</option>
             </select>
             <div class="modal-buttons">
                 <button class="btn-cancel" onclick="fermerModaleAdmin()">Annuler</button>

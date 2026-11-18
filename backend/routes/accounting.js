@@ -1,19 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { verifyAdmin } = require('../middleware/auth');
+const { verifySuperAdmin } = require('../middleware/auth');
 const PDFDocument = require('pdfkit');
 const path = require('path');
 
 // ==================== PROFORMAS ====================
-router.get('/proformas', verifyAdmin, async (req, res) => {
+router.get('/proformas', verifySuperAdmin, async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM proformas ORDER BY created_at DESC');
     res.json(result.rows);
   } catch (err) { res.status(500).json({ message: 'Erreur serveur.' }); }
 });
 
-router.post('/proformas', verifyAdmin, async (req, res) => {
+router.post('/proformas', verifySuperAdmin, async (req, res) => {
   const { client_name, phone, address, items, total, valid_until } = req.body;
   try {
     const result = await db.query(
@@ -27,7 +27,6 @@ router.post('/proformas', verifyAdmin, async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=Proforma_${proforma.id}.pdf`);
     doc.pipe(res);
 
-    // On récupère le logo depuis Cloudinary (ou une URL locale si sur ton PC)
     const logoPath = path.join(__dirname, '../../frontend/images/logo.png');
     try { doc.image(logoPath, (doc.page.width - 120) / 2, 40, { width: 120 }); doc.y = 170; } catch (err) { doc.y = 50; }
 
@@ -54,19 +53,13 @@ router.post('/proformas', verifyAdmin, async (req, res) => {
 
     let y = doc.y;
     doc.rect(50, y, 500, 20).fill('#F4F7F6');
-    doc.fillColor('#000000').text('Désignation', 60, y + 5);
-    doc.text('Qté', 350, y + 5);
-    doc.text('Prix Unit.', 400, y + 5);
-    doc.text('Total', 480, y + 5);
+    doc.fillColor('#000000').text('Désignation', 60, y + 5).text('Qté', 350, y + 5).text('Prix Unit.', 400, y + 5).text('Total', 480, y + 5);
     y += 25;
 
     doc.font('Helvetica');
     const parsedItems = typeof proforma.items === 'string' ? JSON.parse(proforma.items) : proforma.items;
     parsedItems.forEach(item => {
-      doc.text(item.nom, 60, y);
-      doc.text(item.qty.toString(), 350, y);
-      doc.text(`${new Intl.NumberFormat('fr-FR').format(item.prix)} MRU`, 400, y);
-      doc.text(`${new Intl.NumberFormat('fr-FR').format(item.prix * item.qty)} MRU`, 480, y);
+      doc.text(item.nom, 60, y).text(item.qty.toString(), 350, y).text(`${new Intl.NumberFormat('fr-FR').format(item.prix)} MRU`, 400, y).text(`${new Intl.NumberFormat('fr-FR').format(item.prix * item.qty)} MRU`, 480, y);
       y += 20;
     });
 
@@ -79,7 +72,7 @@ router.post('/proformas', verifyAdmin, async (req, res) => {
   }
 });
 
-router.delete('/proformas/:id', verifyAdmin, async (req, res) => {
+router.delete('/proformas/:id', verifySuperAdmin, async (req, res) => {
   try {
     await db.query('DELETE FROM proformas WHERE id = $1', [req.params.id]);
     res.json({ message: 'Proforma supprimée.' });
@@ -87,17 +80,14 @@ router.delete('/proformas/:id', verifyAdmin, async (req, res) => {
 });
 
 // ==================== DÉPENSES ====================
-router.get('/expenses', verifyAdmin, async (req, res) => {
+router.get('/expenses', verifySuperAdmin, async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM expenses ORDER BY date DESC');
     res.json(result.rows);
-  } catch (err) { 
-    console.error("Erreur GET expenses:", err);
-    res.status(500).json({ message: 'Erreur serveur.' }); 
-  }
+  } catch (err) { res.status(500).json({ message: 'Erreur serveur.' }); }
 });
 
-router.post('/expenses', verifyAdmin, async (req, res) => {
+router.post('/expenses', verifySuperAdmin, async (req, res) => {
   const { description, amount, category, date } = req.body;
   try {
     const result = await db.query(
@@ -105,13 +95,10 @@ router.post('/expenses', verifyAdmin, async (req, res) => {
       [description, amount, category, date]
     );
     res.status(201).json({ message: 'Dépense ajoutée.', expense: result.rows[0] });
-  } catch (err) { 
-    console.error("Erreur POST expense:", err); // <-- C'est ici qu'on verra l'erreur !
-    res.status(500).json({ message: 'Erreur serveur.' }); 
-  }
+  } catch (err) { res.status(500).json({ message: 'Erreur serveur.' }); }
 });
 
-router.delete('/expenses/:id', verifyAdmin, async (req, res) => {
+router.delete('/expenses/:id', verifySuperAdmin, async (req, res) => {
   try {
     await db.query('DELETE FROM expenses WHERE id = $1', [req.params.id]);
     res.json({ message: 'Dépense supprimée.' });

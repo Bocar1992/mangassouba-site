@@ -6,8 +6,6 @@ const db = require('../db');
 const { verifyAdmin } = require('../middleware/auth');
 
 const storage = multer.memoryStorage();
-
-// SÉCURITÉ : On limite à 10Mo et on n'accepte que les images et vidéos
 const upload = multer({ 
     storage: storage,
     limits: { fileSize: 10 * 1024 * 1024 }, 
@@ -39,7 +37,8 @@ async function traduireTexte(texte, langueCible) {
   } catch (err) { return null; }
 }
 
-router.get('/', async (req, res) => {
+// 1. VOIR TOUS LES PRODUITS
+router.get('/', verifyAdmin, async (req, res) => {
   try {
     const result = await db.query(`
       SELECT p.*, c.nom as categorie_nom, c.nom_en as categorie_nom_en, c.nom_ar as categorie_nom_ar 
@@ -47,10 +46,20 @@ router.get('/', async (req, res) => {
       LEFT JOIN categories c ON p.category_id = c.id 
       ORDER BY p.created_at DESC
     `);
-    res.json(result.rows);
+    
+    let produits = result.rows;
+    // SÉCURITÉ : On cache le prix d'achat aux employés
+    if (req.admin.role !== 'superadmin') {
+        produits = produits.map(p => {
+            delete p.prix_achat;
+            return p;
+        });
+    }
+    res.json(produits);
   } catch (err) { res.status(500).json({ message: 'Erreur serveur.' }); }
 });
 
+// 2. AJOUTER UN PRODUIT (Admin)
 router.post('/', verifyAdmin, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), async (req, res) => {
   const { nom, description, prix, prix_achat, prix_gros, seuil_gros, stock, category_id } = req.body;
   let mediaUrl = null;
@@ -71,10 +80,13 @@ router.post('/', verifyAdmin, upload.fields([{ name: 'image', maxCount: 1 }, { n
       videoUrl = result.secure_url;
     }
 
+    // Si c'est un employé, le prix_achat sera undefined ou 0
+    const finalPrixAchat = req.admin.role === 'superadmin' ? (prix_achat || 0) : 0;
+
     const result = await db.query(
       `INSERT INTO products (nom, nom_en, nom_ar, prix, prix_achat, prix_gros, seuil_gros, description, description_en, description_ar, stock, category_id, media, video) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
-      [nom, nom_en, nom_ar, prix, prix_achat || 0, prix_gros || 0, seuil_gros || 10, description, description_en, description_ar, stock, category_id, mediaUrl, videoUrl]
+      [nom, nom_en, nom_ar, prix, finalPrixAchat, prix_gros || 0, seuil_gros || 10, description, description_en, description_ar, stock, category_id, mediaUrl, videoUrl]
     );
 
     res.status(201).json({ message: 'Produit ajouté !', product: result.rows[0] });
@@ -84,6 +96,7 @@ router.post('/', verifyAdmin, upload.fields([{ name: 'image', maxCount: 1 }, { n
   }
 });
 
+// 3. MODIFIER UN PRODUIT (Admin)
 router.put('/:id', verifyAdmin, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), async (req, res) => {
   const { id } = req.params;
   const { nom, description, prix, prix_achat, prix_gros, seuil_gros, stock, category_id, existing_media, existing_video } = req.body;
@@ -105,11 +118,18 @@ router.put('/:id', verifyAdmin, upload.fields([{ name: 'image', maxCount: 1 }, {
       videoUrl = result.secure_url;
     }
 
+    // Si c'est un employé, on garde l'ancien prix d'achat pour ne pas l'écraser
+    let finalPrixAchat = prix_achat || 0;
+    if (req.admin.role !== 'superadmin') {
+        const oldProd = await db.query('SELECT prix_achat FROM products WHERE id = $1', [id]);
+        finalPrixAchat = oldProd.rows[0] ? oldProd.rows[0].prix_achat : 0;
+    }
+
     const result = await db.query(
       `UPDATE products 
        SET nom=$1, nom_en=$2, nom_ar=$3, prix=$4, prix_achat=$5, prix_gros=$6, seuil_gros=$7, description=$8, description_en=$9, description_ar=$10, stock=$11, category_id=$12, media=$13, video=$14 
        WHERE id=$15 RETURNING *`,
-      [nom, nom_en, nom_ar, prix, prix_achat || 0, prix_gros || 0, seuil_gros || 10, description, description_en, description_ar, stock, category_id, mediaUrl, videoUrl, id]
+      [nom, nom_en, nom_ar, prix, finalPrixAchat, prix_gros || 0, seuil_gros || 10, description, description_en, description_ar, stock, category_id, mediaUrl, videoUrl, id]
     );
 
     res.json({ message: 'Produit modifié !', product: result.rows[0] });
@@ -119,6 +139,7 @@ router.put('/:id', verifyAdmin, upload.fields([{ name: 'image', maxCount: 1 }, {
   }
 });
 
+// 4. SUPPRIMER UN PRODUIT (Admin)
 router.delete('/:id', verifyAdmin, async (req, res) => {
   try {
     await db.query('DELETE FROM products WHERE id = $1', [req.params.id]);

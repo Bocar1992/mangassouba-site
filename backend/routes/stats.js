@@ -5,41 +5,44 @@ const { verifyAdmin } = require('../middleware/auth');
 
 router.get('/', verifyAdmin, async (req, res) => {
   try {
-    // 1. Chiffre d'affaires (commandes livrées)
+    const isSuper = req.admin.role === 'superadmin';
+
     const caResult = await db.query("SELECT SUM(total) as ca FROM orders WHERE status = 'livrée'");
     const chiffreAffaires = parseFloat(caResult.rows[0].ca) || 0;
 
-    // 2. Nombre de commandes en attente
     const attenteResult = await db.query("SELECT COUNT(*) as count FROM orders WHERE status = 'en attente'");
     const commandesEnAttente = parseInt(attenteResult.rows[0].count);
 
-    // 3. Valeur du stock (au prix d'achat)
-    const stockResult = await db.query("SELECT SUM(prix_achat * stock) as valeur FROM products");
-    const valeurStock = parseFloat(stockResult.rows[0].valeur) || 0;
-
-    // 4. Total des dépenses
-    const depensesResult = await db.query("SELECT SUM(amount) as total FROM expenses");
-    const totalDepenses = parseFloat(depensesResult.rows[0].total) || 0;
-
-    // 5. Bénéfice estimé (CA - Dépenses)
-    const benefice = chiffreAffaires - totalDepenses;
-
-    // 6. Alertes stock (moins de 5)
     const alertesResult = await db.query("SELECT COUNT(*) as count FROM products WHERE stock < 5");
     const alertesStock = parseInt(alertesResult.rows[0].count);
 
-    // 7. Total de produits (C'est la ligne qui manquait !)
     const produitsResult = await db.query("SELECT COUNT(*) as count FROM products");
     const totalProduits = parseInt(produitsResult.rows[0].count);
 
+    // Si c'est un superadmin, on calcule et renvoie les données financières
+    let valeurStock = 0;
+    let totalDepenses = 0;
+    let benefice = 0;
+
+    if (isSuper) {
+        const stockResult = await db.query("SELECT SUM(prix_achat * stock) as valeur FROM products");
+        valeurStock = parseFloat(stockResult.rows[0].valeur) || 0;
+
+        const depensesResult = await db.query("SELECT SUM(amount) as total FROM expenses");
+        totalDepenses = parseFloat(depensesResult.rows[0].total) || 0;
+
+        benefice = chiffreAffaires - totalDepenses;
+    }
+
     res.json({
-      chiffreAffaires,
+      chiffreAffaires: isSuper ? chiffreAffaires : null,
       commandesEnAttente,
-      valeurStock,
-      totalDepenses,
-      benefice,
+      valeurStock: isSuper ? valeurStock : null,
+      totalDepenses: isSuper ? totalDepenses : null,
+      benefice: isSuper ? benefice : null,
       alertesStock,
-      totalProduits // On l'ajoute ici
+      totalProduits,
+      role: req.admin.role
     });
   } catch (err) {
     console.error(err);
