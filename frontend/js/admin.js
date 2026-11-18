@@ -8,7 +8,6 @@ let commandesGlobales = [];
 let lignesProforma = [];
 let commandeLignes = [];
 
-// SÉCURITÉ ANTI-XSS
 function escapeHTML(str) {
     if (!str) return '';
     return str.toString().replace(/[&<>'"]/g, tag => ({
@@ -54,7 +53,6 @@ function afficherDashboard() {
     chargerCategoriesAdmin();
 }
 
-// SÉCURITÉ VISUELLE : Masque les éléments selon le rôle
 function appliquerDroitsAdmin() {
     if (adminData && adminData.role !== 'superadmin') {
         const menuCompta = document.getElementById('menu-comptabilite');
@@ -119,13 +117,8 @@ async function changerMonMotDePasse() {
 }
 
 // ==================== IMPORT / EXPORT CSV ====================
-function ouvrirModaleImport() {
-    document.getElementById('modal-import').classList.add('show');
-    document.getElementById('import-file').value = '';
-}
-function fermerModaleImport() {
-    document.getElementById('modal-import').classList.remove('show');
-}
+function ouvrirModaleImport() { document.getElementById('modal-import').classList.add('show'); document.getElementById('import-file').value = ''; }
+function fermerModaleImport() { document.getElementById('modal-import').classList.remove('show'); }
 
 function telechargerModeleCSV() {
     const csvContent = "nom,prix,stock,category_id,description,prix_achat,prix_gros,seuil_gros\nMarteau,1500,10,1,Marteau en acier,800,1200,5\nTournevis,500,50,1,Tournevis cruciforme,200,0,0";
@@ -141,9 +134,7 @@ function telechargerModeleCSV() {
 
 async function exporterProduitsCSV() {
     try {
-        const reponse = await fetch(`${API_URL}/products/export`, {
-            headers: { 'Authorization': `Bearer ${tokenAdmin}` }
-        });
+        const reponse = await fetch(`${API_URL}/products/export`, { headers: { 'Authorization': `Bearer ${tokenAdmin}` } });
         if (!reponse.ok) throw new Error("Erreur d'exportation");
         
         const blob = await reponse.blob();
@@ -170,18 +161,11 @@ async function importerProduitsCSV() {
     btn.innerText = "Importation en cours..."; btn.disabled = true;
 
     try {
-        const reponse = await fetch(`${API_URL}/products/import`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${tokenAdmin}` },
-            body: formData
-        });
-        
+        const reponse = await fetch(`${API_URL}/products/import`, { method: 'POST', headers: { 'Authorization': `Bearer ${tokenAdmin}` }, body: formData });
         const data = await reponse.json();
         if (reponse.ok) {
             let message = `✅ ${data.message}`;
-            if (data.errors && data.errors.length > 0) {
-                message += `\n\n⚠️ Lignes ignorées :\n` + data.errors.join('\n');
-            }
+            if (data.errors && data.errors.length > 0) message += `\n\n⚠️ Lignes ignorées :\n` + data.errors.join('\n');
             alert(message);
             fermerModaleImport();
             chargerProduitsAdmin();
@@ -377,9 +361,7 @@ function ouvrirModaleProduit(id = null) {
         document.getElementById('prod-nom').value = prod.nom; document.getElementById('prod-prix').value = prod.prix;
         document.getElementById('prod-prix-gros').value = prod.prix_gros || 0; document.getElementById('prod-seuil-gros').value = prod.seuil_gros || 10;
         
-        if(document.getElementById('prod-prix-achat')) {
-            document.getElementById('prod-prix-achat').value = prod.prix_achat || 0;
-        }
+        if(document.getElementById('prod-prix-achat')) document.getElementById('prod-prix-achat').value = prod.prix_achat || 0;
         
         document.getElementById('prod-stock').value = prod.stock;
         document.getElementById('prod-desc').value = prod.description || ''; document.getElementById('prod-category').value = prod.category_id || '';
@@ -459,16 +441,49 @@ async function sauvegarderDepense() {
 }
 async function supprimerDepense(id) { if(!confirm("Supprimer cette dépense ?")) return; try { const rep = await fetch(`${API_URL}/accounting/expenses/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if(rep.ok) { chargerDepensesAdmin(); chargerFinances(); } } catch(e) { alert("Erreur serveur."); } }
 
+// MODIFIÉ ICI : Ajout du bouton de téléchargement PDF
 async function chargerProformasAdmin() {
     try {
         const reponse = await fetch(`${API_URL}/accounting/proformas`, { headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); const proformas = await reponse.json();
         const tbody = document.getElementById('liste-proformas-admin'); tbody.innerHTML = '';
         if(proformas.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Aucune proforma.</td></tr>'; return; }
         proformas.forEach(p => {
-            const tr = document.createElement('tr'); tr.innerHTML = `<td>PRO-${p.id}</td><td><strong>${escapeHTML(p.client_name)}</strong></td><td>${new Intl.NumberFormat('fr-FR').format(p.total)} MRU</td><td><button class="btn-action btn-delete" onclick="supprimerProforma(${p.id})">X</button></td>`; tbody.appendChild(tr);
+            const tr = document.createElement('tr'); 
+            tr.innerHTML = `
+                <td>PRO-${p.id}</td>
+                <td><strong>${escapeHTML(p.client_name)}</strong></td>
+                <td>${new Intl.NumberFormat('fr-FR').format(p.total)} MRU</td>
+                <td>
+                    <button class="btn-action btn-edit" onclick="telechargerProformaExistant(${p.id})">📄 PDF</button>
+                    <button class="btn-action btn-delete" onclick="supprimerProforma(${p.id})">X</button>
+                </td>`; 
+            tbody.appendChild(tr);
         });
     } catch (err) { console.error(err); }
 }
+
+// NOUVEAU : Fonction pour télécharger une proforma existante
+async function telechargerProformaExistant(id) {
+    try {
+        const reponse = await fetch(`${API_URL}/accounting/proformas/${id}/pdf`, {
+            headers: { 'Authorization': `Bearer ${tokenAdmin}` }
+        });
+        if (!reponse.ok) throw new Error("Erreur PDF");
+        
+        const blob = await reponse.blob(); 
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a'); 
+        a.href = url; 
+        a.download = `Proforma_${id}.pdf`; 
+        document.body.appendChild(a); 
+        a.click(); 
+        a.remove(); 
+        window.URL.revokeObjectURL(url);
+    } catch (err) {
+        alert("Impossible de télécharger la proforma.");
+    }
+}
+
 function ouvrirModaleProforma() { document.getElementById('modal-proforma').classList.add('show'); document.getElementById('prof-client').value = ''; document.getElementById('prof-phone').value = ''; document.getElementById('prof-address').value = ''; document.getElementById('prof-validity').value = ''; lignesProforma = []; afficherLignesProforma(); }
 function fermerModaleProforma() { document.getElementById('modal-proforma').classList.remove('show'); }
 function ajouterLigneProforma() { lignesProforma.push({ nom: '', prix: 0, qty: 1 }); afficherLignesProforma(); }

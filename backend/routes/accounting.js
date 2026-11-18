@@ -22,6 +22,33 @@ router.post('/proformas', verifySuperAdmin, async (req, res) => {
       [client_name, phone, address, JSON.stringify(items), total, valid_until]
     );
     const proforma = result.rows[0];
+    
+    // On appelle la fonction de génération de PDF
+    genererPDFProforma(proforma, res);
+    
+  } catch (err) { 
+    console.error("Erreur création proforma:", err);
+    res.status(500).json({ message: 'Erreur.' }); 
+  }
+});
+
+// NOUVEAU : TÉLÉCHARGER UNE PROFORMA EXISTANTE
+router.get('/proformas/:id/pdf', verifySuperAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await db.query('SELECT * FROM proformas WHERE id = $1', [id]);
+        if (result.rows.length === 0) return res.status(404).json({ message: 'Proforma introuvable.' });
+        
+        const proforma = result.rows[0];
+        genererPDFProforma(proforma, res);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Erreur serveur.' });
+    }
+});
+
+// Fonction centralisée pour générer le PDF
+function genererPDFProforma(proforma, res) {
     const doc = new PDFDocument({ margin: 50 });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=Proforma_${proforma.id}.pdf`);
@@ -53,24 +80,26 @@ router.post('/proformas', verifySuperAdmin, async (req, res) => {
 
     let y = doc.y;
     doc.rect(50, y, 500, 20).fill('#F4F7F6');
-    doc.fillColor('#000000').text('Désignation', 60, y + 5).text('Qté', 350, y + 5).text('Prix Unit.', 400, y + 5).text('Total', 480, y + 5);
+    doc.fillColor('#000000').text('Désignation', 60, y + 5);
+    doc.text('Qté', 350, y + 5);
+    doc.text('Prix Unit.', 400, y + 5);
+    doc.text('Total', 480, y + 5);
     y += 25;
 
     doc.font('Helvetica');
     const parsedItems = typeof proforma.items === 'string' ? JSON.parse(proforma.items) : proforma.items;
     parsedItems.forEach(item => {
-      doc.text(item.nom, 60, y).text(item.qty.toString(), 350, y).text(`${new Intl.NumberFormat('fr-FR').format(item.prix)} MRU`, 400, y).text(`${new Intl.NumberFormat('fr-FR').format(item.prix * item.qty)} MRU`, 480, y);
+      doc.text(item.nom, 60, y);
+      doc.text(item.qty.toString(), 350, y);
+      doc.text(`${new Intl.NumberFormat('fr-FR').format(item.prix)} MRU`, 400, y);
+      doc.text(`${new Intl.NumberFormat('fr-FR').format(item.prix * item.qty)} MRU`, 480, y);
       y += 20;
     });
 
     doc.moveTo(50, y).lineTo(550, y).stroke(); y += 10;
     doc.fontSize(16).font('Helvetica-Bold').text(`TOTAL : ${new Intl.NumberFormat('fr-FR').format(proforma.total)} MRU`, 300, y, { width: 250, align: 'right' });
     doc.end();
-  } catch (err) { 
-    console.error("Erreur PDF Proforma:", err);
-    res.status(500).json({ message: 'Erreur.' }); 
-  }
-});
+}
 
 router.delete('/proformas/:id', verifySuperAdmin, async (req, res) => {
   try {
