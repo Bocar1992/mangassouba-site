@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcrypt'); // NOUVEAU : Pour hacher le mot de passe par défaut
 const db = require('../db');
 const { verifyAdmin } = require('../middleware/auth');
 const PDFDocument = require('pdfkit');
@@ -52,13 +53,32 @@ router.post('/', async (req, res) => {
       );
     }
 
+    // --- NOUVEAU : GESTION AUTOMATIQUE DU CLIENT ---
     const pointsGagnes = Math.floor(totalFinal / 100);
-    if (pointsGagnes > 0) {
-      await client.query(
-        'UPDATE customers SET points = points + $1 WHERE phone = $2',
-        [pointsGagnes, phone]
-      );
+    
+    // 1. On vérifie si le client existe déjà
+    const clientRes = await client.query('SELECT id FROM customers WHERE phone = $1', [phone]);
+    
+    if (clientRes.rows.length === 0) {
+        // 2. Le client n'existe pas, on le crée !
+        // On utilise son numéro de téléphone comme mot de passe par défaut
+        const salt = await bcrypt.genSalt(10);
+        const defaultHashedPassword = await bcrypt.hash(phone, salt); 
+        
+        await client.query(
+            'INSERT INTO customers (name, phone, password, points) VALUES ($1, $2, $3, $4)',
+            [clientName, phone, defaultHashedPassword, pointsGagnes]
+        );
+    } else {
+        // 3. Le client existe déjà, on met juste à jour ses points
+        if (pointsGagnes > 0) {
+            await client.query(
+                'UPDATE customers SET points = points + $1 WHERE phone = $2',
+                [pointsGagnes, phone]
+            );
+        }
     }
+    // -----------------------------------------------
 
     await client.query('COMMIT');
     res.status(201).json({ message: 'Commande enregistrée avec succès !', order: orderResult.rows[0] });
