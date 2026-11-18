@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const db = require('../db');
-const { verifyAdmin } = require('../middleware/auth');
+const { verifySuperAdmin } = require('../middleware/auth');
 
 // 1. VOIR TOUS LES ADMINS
-router.get('/', verifyAdmin, async (req, res) => {
+router.get('/', verifySuperAdmin, async (req, res) => {
   try {
     const result = await db.query('SELECT id, nom, email, role, created_at FROM admins ORDER BY created_at DESC');
     res.json(result.rows);
@@ -13,7 +13,7 @@ router.get('/', verifyAdmin, async (req, res) => {
 });
 
 // 2. CRÉER UN NOUVEL ADMIN
-router.post('/', verifyAdmin, async (req, res) => {
+router.post('/', verifySuperAdmin, async (req, res) => {
   const { nom, email, password, role } = req.body;
   if (!nom || !email || !password) return res.status(400).json({ message: 'Champs obligatoires manquants.' });
 
@@ -33,15 +33,19 @@ router.post('/', verifyAdmin, async (req, res) => {
 });
 
 // 3. MODIFIER UN ADMIN
-router.put('/:id', verifyAdmin, async (req, res) => {
+router.put('/:id', verifySuperAdmin, async (req, res) => {
   const { id } = req.params;
   const { nom, email, password, role } = req.body;
+
+  // SÉCURITÉ : On empêche de modifier le compte principal ID=1 (sauf si c'est lui-même qui le fait)
+  if (id === '1' && req.admin.id !== 1) {
+      return res.status(403).json({ message: "Seul le créateur principal peut modifier ce compte." });
+  }
 
   try {
     let query = 'UPDATE admins SET nom = $1, email = $2, role = $3';
     let params = [nom, email, role, id];
 
-    // Si un nouveau mot de passe est fourni, on le hash
     if (password && password.trim() !== '') {
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
@@ -58,9 +62,9 @@ router.put('/:id', verifyAdmin, async (req, res) => {
 });
 
 // 4. SUPPRIMER UN ADMIN
-router.delete('/:id', verifyAdmin, async (req, res) => {
+router.delete('/:id', verifySuperAdmin, async (req, res) => {
   const { id } = req.params;
-  // Empêcher de supprimer le tout premier superadmin (id=1) par sécurité
+  // SÉCURITÉ : Impossible de supprimer le Super Admin principal
   if (id === '1') return res.status(403).json({ message: 'Impossible de supprimer le Super Admin principal.' });
 
   try {

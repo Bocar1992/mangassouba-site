@@ -7,15 +7,17 @@ const db = require('./db');
 
 const app = express();
 
-// SÉCURITÉ : Protège les en-têtes HTTP (empêche le clickjacking, le sniffing MIME, etc.)
-app.use(helmet());
+// SÉCURITÉ : Helmet configuré pour autoriser les images Cloudinary
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
-// SÉCURITÉ : Restreindre les origines (CORS)
-// En production, on n'autorise que ton site Render et le localhost pour le dev
 const originesAutorisees = [
     'https://mangassouba-frontend.onrender.com',
     'http://localhost:5500',
-    'http://127.0.0.1:5500'
+    'http://127.0.0.1:5500',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
 ];
 app.use(cors({
     origin: function (origin, callback) {
@@ -29,23 +31,30 @@ app.use(cors({
 
 app.use(express.json());
 
-// SÉCURITÉ : Limiter les tentatives de connexion (Anti Brute-Force)
+// 1. Limite pour les connexions (Anti Brute-Force)
 const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10, // Maximum 10 tentatives par IP toutes les 15 min
+    windowMs: 15 * 60 * 1000, 
+    max: 100, 
     message: { message: "Trop de tentatives de connexion. Veuillez réessayer dans 15 minutes." }
 });
 app.use('/api/auth/login', authLimiter);
 app.use('/api/client-auth/login', authLimiter);
 
-// SÉCURITÉ : Limiter l'utilisation de l'IA pour éviter le spam
-const aiLimiter = rateLimit({
+// 2. Limite pour les commandes (Anti Spam)
+const orderLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 heure
-    max: 30, // Maximum 30 messages par heure
-    message: { response: "Vous avez atteint la limite de messages avec l'assistant. Réessayez plus tard." }
+    max: 20, // Maximum 20 commandes par heure par IP
+    message: { message: "Trop de commandes effectuées. Veuillez patienter ou nous appeler." }
+});
+app.use('/api/orders', orderLimiter);
+
+// 3. Limite pour l'IA
+const aiLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, 
+    max: 30, 
+    message: { response: "Vous avez atteint la limite de messages avec l'assistant." }
 });
 app.use('/api/ai/chat', aiLimiter);
-
 
 // --- NOS ROUTES ---
 const authRoutes = require('./routes/auth');
@@ -77,10 +86,10 @@ app.use('/api/banners', bannerRoutes);
 app.use('/api/ai', aiRoutes);
 
 app.get('/api/test', (req, res) => {
-  res.json({ message: "Bienvenue sur le serveur de Mangassouba et Fils !" });
+  res.json({ message: "Bienvenue sur le serveur sécurisé de Mangassouba et Fils !" });
 });
 
-// Gestion globale des erreurs (pour ne pas exposer les traces du serveur)
+// Gestion globale des erreurs
 app.use((err, req, res, next) => {
     console.error("Erreur interceptée :", err.message);
     if (err.message.includes('CORS')) {

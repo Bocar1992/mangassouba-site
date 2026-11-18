@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const jwt = require('jsonwebtoken'); // NOUVEAU : pour lire le token discrètement
+const jwt = require('jsonwebtoken');
 const cloudinary = require('../cloudinary');
 const db = require('../db');
 const { verifyAdmin } = require('../middleware/auth');
@@ -38,7 +38,6 @@ async function traduireTexte(texte, langueCible) {
   } catch (err) { return null; }
 }
 
-// 1. VOIR TOUS LES PRODUITS (Public pour le site client)
 router.get('/', async (req, res) => {
   try {
     const result = await db.query(`
@@ -49,8 +48,6 @@ router.get('/', async (req, res) => {
     `);
     
     let produits = result.rows;
-    
-    // SÉCURITÉ : On vérifie si la personne qui demande est un superadmin
     let isSuperAdmin = false;
     const authHeader = req.headers['authorization'];
     if (authHeader) {
@@ -58,24 +55,24 @@ router.get('/', async (req, res) => {
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             if (decoded.role === 'superadmin') isSuperAdmin = true;
-        } catch (e) {} // Si le token est invalide, on ignore (c'est un client normal)
+        } catch (e) {}
     }
 
-    // Si ce n'est pas un superadmin, on supprime le prix d'achat de la réponse
     if (!isSuperAdmin) {
-        produits = produits.map(p => {
-            delete p.prix_achat;
-            return p;
-        });
+        produits = produits.map(p => { delete p.prix_achat; return p; });
     }
-    
     res.json(produits);
   } catch (err) { res.status(500).json({ message: 'Erreur serveur.' }); }
 });
 
-// 2. AJOUTER UN PRODUIT (Admin)
 router.post('/', verifyAdmin, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), async (req, res) => {
   const { nom, description, prix, prix_achat, prix_gros, seuil_gros, stock, category_id } = req.body;
+  
+  // VALIDATION DES ENTRÉES
+  if (parseFloat(prix) < 0 || parseInt(stock) < 0) {
+      return res.status(400).json({ message: "Le prix et le stock ne peuvent pas être négatifs." });
+  }
+
   let mediaUrl = null;
   let videoUrl = null;
 
@@ -109,10 +106,14 @@ router.post('/', verifyAdmin, upload.fields([{ name: 'image', maxCount: 1 }, { n
   }
 });
 
-// 3. MODIFIER UN PRODUIT (Admin)
 router.put('/:id', verifyAdmin, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), async (req, res) => {
   const { id } = req.params;
   const { nom, description, prix, prix_achat, prix_gros, seuil_gros, stock, category_id, existing_media, existing_video } = req.body;
+  
+  if (parseFloat(prix) < 0 || parseInt(stock) < 0) {
+      return res.status(400).json({ message: "Le prix et le stock ne peuvent pas être négatifs." });
+  }
+
   let mediaUrl = existing_media;
   let videoUrl = existing_video;
 
@@ -151,7 +152,6 @@ router.put('/:id', verifyAdmin, upload.fields([{ name: 'image', maxCount: 1 }, {
   }
 });
 
-// 4. SUPPRIMER UN PRODUIT (Admin)
 router.delete('/:id', verifyAdmin, async (req, res) => {
   try {
     await db.query('DELETE FROM products WHERE id = $1', [req.params.id]);

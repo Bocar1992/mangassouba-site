@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcrypt'); // NOUVEAU : Pour hacher le mot de passe par défaut
+const bcrypt = require('bcrypt');
 const db = require('../db');
 const { verifyAdmin } = require('../middleware/auth');
 const PDFDocument = require('pdfkit');
@@ -8,28 +8,35 @@ const path = require('path');
 
 // 1. CRÉER UNE COMMANDE (Public - Client)
 router.post('/', async (req, res) => {
-  const { clientName, phone, address, items, payment, delivery_zone, delivery_fee, promo_code, discount_amount } = req.body;
+  const { clientName, phone, address, items, payment, delivery_zone, delivery_fee, promo_code } = req.body;
+
+  // VALIDATION DES ENTRÉES
+  if (!clientName || !phone || !items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "Données de commande invalides." });
+  }
 
   const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
 
-    // SÉCURITÉ : On recalcule le total côté serveur
     let vraiTotal = 0;
     let itemsVerifies = [];
 
     for (let item of items) {
+      // VALIDATION : On s'assure que la quantité est un entier positif
+      const qty = parseInt(item.qty);
+      if (isNaN(qty) || qty <= 0) throw new Error("Quantité invalide pour le produit.");
+
       const prodRes = await client.query('SELECT prix, stock FROM products WHERE id = $1', [item.id]);
       if (prodRes.rows.length === 0) throw new Error("Produit introuvable");
       
       const produit = prodRes.rows[0];
-      if (produit.stock < item.qty) throw new Error("Stock insuffisant pour " + item.nom);
+      if (produit.stock < qty) throw new Error("Stock insuffisant pour " + item.nom);
 
-      vraiTotal += (parseFloat(produit.prix) * item.qty);
-      itemsVerifies.push({ id: item.id, nom: item.nom, prix: parseFloat(produit.prix), qty: item.qty });
+      vraiTotal += (parseFloat(produit.prix) * qty);
+      itemsVerifies.push({ id: item.id, nom: item.nom, prix: parseFloat(produit.prix), qty: qty });
     }
 
-    // On applique la réduction basée sur le vrai total
     let vraieReduction = 0;
     if (promo_code) {
         const promoRes = await client.query('SELECT discount_percent FROM promo_codes WHERE code = $1 AND is_active = true', [promo_code]);
@@ -38,47 +45,32 @@ router.post('/', async (req, res) => {
         }
     }
 
-    const totalFinal = vraiTotal - vraieReduction + (delivery_fee || 0);
+    const fraisLivraison = parseFloat(delivery_fee) || 0;
+    const totalFinal = vraiTotal - vraieReduction + fraisLivraison;
 
     const orderResult = await client.query(
       `INSERT INTO orders (clientName, phone, address, items, total, payment, promo_code, discount_amount, delivery_zone, delivery_fee, status) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'en attente') RETURNING *`,
-      [clientName, phone, address, JSON.stringify(itemsVerifies), totalFinal, payment, promo_code, vraieReduction, delivery_zone, delivery_fee]
+      [clientName, phone, address, JSON.stringify(itemsVerifies), totalFinal, payment, promo_code, vraieReduction, delivery_zone, fraisLivraison]
     );
 
     for (let item of itemsVerifies) {
-      await client.query(
-        'UPDATE products SET stock = stock - $1 WHERE id = $2',
-        [item.qty, item.id]
-      );
+      await client.query('UPDATE products SET stock = stock - $1 WHERE id = $2', [item.qty, item.id]);
     }
 
-    // --- NOUVEAU : GESTION AUTOMATIQUE DU CLIENT ---
     const pointsGagnes = Math.floor(totalFinal / 100);
-    
-    // 1. On vérifie si le client existe déjà
     const clientRes = await client.query('SELECT id FROM customers WHERE phone = $1', [phone]);
     
     if (clientRes.rows.length === 0) {
-        // 2. Le client n'existe pas, on le crée !
-        // On utilise son numéro de téléphone comme mot de passe par défaut
         const salt = await bcrypt.genSalt(10);
         const defaultHashedPassword = await bcrypt.hash(phone, salt); 
-        
         await client.query(
             'INSERT INTO customers (name, phone, password, points) VALUES ($1, $2, $3, $4)',
             [clientName, phone, defaultHashedPassword, pointsGagnes]
         );
-    } else {
-        // 3. Le client existe déjà, on met juste à jour ses points
-        if (pointsGagnes > 0) {
-            await client.query(
-                'UPDATE customers SET points = points + $1 WHERE phone = $2',
-                [pointsGagnes, phone]
-            );
-        }
+    } else if (pointsGagnes > 0) {
+        await client.query('UPDATE customers SET points = points + $1 WHERE phone = $2', [pointsGagnes, phone]);
     }
-    // -----------------------------------------------
 
     await client.query('COMMIT');
     res.status(201).json({ message: 'Commande enregistrée avec succès !', order: orderResult.rows[0] });
@@ -126,6 +118,8 @@ router.post('/admin', verifyAdmin, async (req, res) => {
 router.put('/:id', verifyAdmin, async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
+  if (!['en attente', 'confirmée', 'livrée'].includes(status)) return res.status(400).json({ message: 'Statut invalide.' });
+
   try {
     const result = await db.query('UPDATE orders SET status = $1 WHERE id = $2 RETURNING *', [status, id]);
     if (result.rows.length === 0) return res.status(404).json({ message: 'Commande introuvable.' });
