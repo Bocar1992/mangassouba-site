@@ -331,9 +331,36 @@ async function chargerDepensesAdmin() {
 function ouvrirModaleDepense() { document.getElementById('modal-depense').classList.add('show'); document.getElementById('dep-desc').value = ''; document.getElementById('dep-montant').value = ''; document.getElementById('dep-date').value = new Date().toISOString().split('T')[0]; }
 function fermerModaleDepense() { document.getElementById('modal-depense').classList.remove('show'); }
 async function sauvegarderDepense() {
-    const description = document.getElementById('dep-desc').value; const amount = document.getElementById('dep-montant').value; const category = document.getElementById('dep-cat').value; const date = document.getElementById('dep-date').value;
+    const description = document.getElementById('dep-desc').value; 
+    const amount = document.getElementById('dep-montant').value; 
+    const category = document.getElementById('dep-cat').value; 
+    const date = document.getElementById('dep-date').value;
+    
     if(!description || !amount || !date) return alert("Veuillez remplir les champs.");
-    try { const rep = await fetch(`${API_URL}/accounting/expenses`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenAdmin}` }, body: JSON.stringify({ description, amount, category, date }) }); if(rep.ok) { fermerModaleDepense(); chargerDepensesAdmin(); chargerFinances(); } } catch(e) { alert("Erreur serveur."); }
+    
+    const btn = document.querySelector('#modal-depense .btn-save');
+    btn.innerText = "Traitement..."; btn.disabled = true;
+
+    try { 
+        const rep = await fetch(`${API_URL}/accounting/expenses`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenAdmin}` }, 
+            body: JSON.stringify({ description, amount, category, date }) 
+        }); 
+
+        if(rep.ok) { 
+            fermerModaleDepense(); 
+            chargerDepensesAdmin(); 
+            chargerFinances(); 
+        } else {
+            const errorData = await rep.json();
+            alert("Erreur serveur : " + (errorData.message || "Impossible d'enregistrer."));
+        }
+    } catch(e) { 
+        alert("Erreur de connexion au serveur."); 
+    } finally {
+        btn.innerText = "Enregistrer"; btn.disabled = false;
+    }
 }
 async function supprimerDepense(id) { if(!confirm("Supprimer cette dépense ?")) return; try { const rep = await fetch(`${API_URL}/accounting/expenses/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if(rep.ok) { chargerDepensesAdmin(); chargerFinances(); } } catch(e) { alert("Erreur serveur."); } }
 
