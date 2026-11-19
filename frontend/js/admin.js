@@ -8,6 +8,7 @@ let commandesGlobales = [];
 let lignesProforma = [];
 let commandeLignes = [];
 
+// SÉCURITÉ ANTI-XSS
 function escapeHTML(str) {
     if (!str) return '';
     return str.toString().replace(/[&<>'"]/g, tag => ({
@@ -350,7 +351,6 @@ async function chargerProduitsAdmin() {
 }
 function ouvrirModaleProduit(id = null) {
     document.getElementById('modal-produit').classList.add('show');
-    document.getElementById('ai-prod-prompt').value = '';
     const selectCat = document.getElementById('prod-category'); selectCat.innerHTML = '<option value="">-- Choisir --</option>';
     toutesLesCategories.forEach(cat => { const nomAffichage = cat.parent_nom ? `↳ ${cat.parent_nom} > ${cat.nom}` : cat.nom; selectCat.innerHTML += `<option value="${cat.id}">${escapeHTML(nomAffichage)}</option>`; });
     
@@ -441,7 +441,6 @@ async function sauvegarderDepense() {
 }
 async function supprimerDepense(id) { if(!confirm("Supprimer cette dépense ?")) return; try { const rep = await fetch(`${API_URL}/accounting/expenses/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if(rep.ok) { chargerDepensesAdmin(); chargerFinances(); } } catch(e) { alert("Erreur serveur."); } }
 
-// MODIFIÉ ICI : Ajout du bouton de téléchargement PDF
 async function chargerProformasAdmin() {
     try {
         const reponse = await fetch(`${API_URL}/accounting/proformas`, { headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); const proformas = await reponse.json();
@@ -462,7 +461,6 @@ async function chargerProformasAdmin() {
     } catch (err) { console.error(err); }
 }
 
-// NOUVEAU : Fonction pour télécharger une proforma existante
 async function telechargerProformaExistant(id) {
     try {
         const reponse = await fetch(`${API_URL}/accounting/proformas/${id}/pdf`, {
@@ -595,26 +593,3 @@ async function sauvegarderAdmin() {
     const url = id ? `${API_URL}/admins/${id}` : `${API_URL}/admins`; const method = id ? 'PUT' : 'POST';
     try { const reponse = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenAdmin}` }, body: JSON.stringify({ nom, email, password, role }) }); if (reponse.ok) { fermerModaleAdmin(); chargerAdminsAdmin(); } else { const d = await reponse.json(); alert(d.message); } } catch (err) { alert("Erreur serveur."); } }
 async function supprimerAdmin(id) { if (!confirm("Supprimer ?")) return; try { const reponse = await fetch(`${API_URL}/admins/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${tokenAdmin}` } }); if (reponse.ok) chargerAdminsAdmin(); } catch (err) { alert("Erreur."); } }
-
-// ==================== ASSISTANT IA ADMIN ====================
-async function genererProduitIA() {
-    const texte = document.getElementById('ai-prod-prompt').value;
-    if (!texte) return alert("Veuillez décrire le produit à ajouter.");
-    
-    const btn = document.getElementById('btn-ai-generate');
-    btn.innerText = "🪄 L'IA réfléchit..."; btn.disabled = true;
-
-    try {
-        const rep = await fetch(`${API_URL}/ai/admin/generate-product`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texte }) });
-        const data = await rep.json();
-        
-        if (data.nom) document.getElementById('prod-nom').value = data.nom;
-        if (data.prix) document.getElementById('prod-prix').value = data.prix;
-        if (data.description) document.getElementById('prod-desc').value = data.description;
-        if (data.stock) document.getElementById('prod-stock').value = data.stock;
-        if (data.prix_achat && document.getElementById('prod-prix-achat')) document.getElementById('prod-prix-achat').value = data.prix_achat;
-        
-        document.getElementById('ai-prod-prompt').value = '';
-    } catch (e) { alert("L'IA n'a pas pu comprendre la demande."); } 
-    finally { btn.innerText = "✨ Remplir le formulaire automatiquement"; btn.disabled = false; }
-}

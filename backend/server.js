@@ -42,19 +42,11 @@ app.use('/api/client-auth/login', authLimiter);
 
 // 2. Limite pour les commandes (Anti Spam)
 const orderLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 heure
-    max: 20, // Maximum 20 commandes par heure par IP
+    windowMs: 60 * 60 * 1000,
+    max: 20, 
     message: { message: "Trop de commandes effectuées. Veuillez patienter ou nous appeler." }
 });
 app.use('/api/orders', orderLimiter);
-
-// 3. Limite pour l'IA
-const aiLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, 
-    max: 30, 
-    message: { response: "Vous avez atteint la limite de messages avec l'assistant." }
-});
-app.use('/api/ai/chat', aiLimiter);
 
 // --- NOS ROUTES ---
 const authRoutes = require('./routes/auth');
@@ -69,7 +61,6 @@ const customerRoutes = require('./routes/customers');
 const accountingRoutes = require('./routes/accounting');
 const reviewRoutes = require('./routes/reviews');
 const bannerRoutes = require('./routes/banners');
-const aiRoutes = require('./routes/ai');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/client-auth', clientAuthRoutes);
@@ -83,7 +74,6 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/accounting', accountingRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/banners', bannerRoutes);
-app.use('/api/ai', aiRoutes);
 
 app.get('/api/test', (req, res) => {
   res.json({ message: "Bienvenue sur le serveur sécurisé de Mangassouba et Fils !" });

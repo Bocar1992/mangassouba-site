@@ -23,7 +23,6 @@ router.post('/', async (req, res) => {
     let itemsVerifies = [];
 
     for (let item of items) {
-      // VALIDATION : On s'assure que la quantité est un entier positif
       const qty = parseInt(item.qty);
       if (isNaN(qty) || qty <= 0) throw new Error("Quantité invalide pour le produit.");
 
@@ -84,6 +83,7 @@ router.post('/', async (req, res) => {
   }
 });
 
+// ... (Les autres routes Admin restent identiques, voir code complet précédent)
 // 2. VOIR TOUTES LES COMMANDES (Admin)
 router.get('/', verifyAdmin, async (req, res) => {
   try {
